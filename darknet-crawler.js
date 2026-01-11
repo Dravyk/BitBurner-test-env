@@ -112,7 +112,7 @@ Online: ${details.isOnline}`
       return ret;
     }
     case "PHP 5.4": {
-      // ?
+      // Unsort the password
       const ret = false;
       //if (!ret) authFail(details);
       return ret;
@@ -136,7 +136,7 @@ Online: ${details.isOnline}`
       return ret;
     }
     case "RateMyPix.Auth": {
-      // 🌶️🌶️🌶️🌶️🌶️ So spicy!
+      // 🌶️🌶️🌶️🌶️🌶️ Make it spicy!
       const ret = false;
       //if (!ret) authFail(details);
       return ret;
