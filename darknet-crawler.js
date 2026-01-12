@@ -1,7 +1,8 @@
 /** @param {NS} ns */
 export async function main(ns) {
   // Open any caches on this server
-  openAllCaches(ns);
+  ns.ls(ns.self().server, ".cache")
+    .forEach((cache) => ns.dnet.openCache(cache));
 
   while (true) {
     // Get a list of all darknet hostnames directly connected to the current server
@@ -52,114 +53,125 @@ export const serverSolver = async (ns, hostname, details) => {
     return true;
   }
 
-  const authFail = (details) => ns.tprintf(`
+  const authFail = (hostname) => {
+    const details = ns.dnet.getServerAuthDetails(hostname);
+    ns.tprintf(`
 
 Failed to Authenticate
 Model: ${details.modelId}
 Format: ${details.passwordFormat}
 Length: ${details.passwordLength}
 Hint: ${details.passwordHint}
-Online: ${details.isOnline}`
-  );
+Online: ${details.isOnline}
+Connected: ${details.isConnectedToCurrentServer}`
+    );
+  }
 
   switch (details.modelId) {
-    case "ZeroLogon": {
-      // No password
-      const ret = authenticateWithNoPassword(ns, hostname);
-      if (!ret) authFail(details);
-      return ret;
-    }
-    case "FreshInstall_1.0": {
-      // Use a default password
-      const ret = authenticateWithDefaultPassword(ns, hostname, details);
-      if (!ret) authFail(details);
-      return ret;
-    }
-    case "CloudBlare(tm)": {
-      // Parse numbers from data in order
-      const ret = authenticateParseFromData(ns, hostname, details.data);
-      if (!ret) authFail(details);
-      return ret;
-    }
-    case "DeskMemo_3.1": {
-      // Parse numbers from hint in order
-      const ret = authenticateParseFromData(ns, hostname, details.passwordHint);
-      if (!ret) authFail(details);
-      return ret;
-    }
     case "AccountsManager_4.2": {
-      // ?
-      const ret = false;
-      //if (!ret) authFail(details);
-      return ret;
-    }
-    case "Laika4": {
-      // Dog names for password
-      const ret = authenticateWithDogNames(ns, hostname, details);
-      if (!ret) authFail(details);
-      return ret;
-    }
-    case "NIL": {
-      // ?
-      const ret = false;
-      //if (!ret) authFail(details);
-      return ret;
-    }
-    case "OctantVoxel": {
-      // Base conversion
-      const ret = false;
-      //if (!ret) authFail(details);
-      return ret;
-    }
-    case "PHP 5.4": {
-      // Unsort the password
-      const ret = false;
-      //if (!ret) authFail(details);
-      return ret;
-    }
-    case "ModuloTerm": {
-      // Is divisible by ?
-      const ret = false;
-      //if (!ret) authFail(details);
-      return ret;
-    }
-    case "DeepGreen": {
-      // ?
+      // TODO: Password range in hint
       const ret = false;
       //if (!ret) authFail(details);
       return ret;
     }
     case "BellaCuore": {
-      // Convert roman numerals
-      const ret = false;
-      //if (!ret) authFail(details);
+      // TODO: Convert roman numerals
+      const ret = await authenticateWithRomanNumerals(ns, hostname, details.data);
+      if (!ret) authFail(hostname);
       return ret;
     }
-    case "RateMyPix.Auth": {
-      // 🌶️🌶️🌶️🌶️🌶️ Make it spicy!
+    case "CloudBlare(tm)": {
+      // Parse numbers from data in order
+      const ret = await authenticateParseFromData(ns, hostname, details.data);
+      if (!ret) authFail(hostname);
+      return ret;
+    }
+    case "DeepGreen": {
+      // TODO: ?
       const ret = false;
-      //if (!ret) authFail(details);
+      //if (!ret) authFail(hostname);
+      return ret;
+    }
+    case "DeskMemo_3.1": {
+      // Parse numbers from hint in order
+      const ret = await authenticateParseFromData(ns, hostname, details.passwordHint);
+      if (!ret) authFail(hostname);
+      return ret;
+    }
+    case "Factori-Os":
+    // Same as ModuloTerm??
+    case "ModuloTerm": {
+      // TODO: Is divisible by ?
+      const ret = false;
+      //if (!ret) authFail(hostname);
+      return ret;
+    }
+    case "FreshInstall_1.0": {
+      // Use a default password
+      const ret = await authenticateWithDefaultPassword(ns, hostname, details);
+      if (!ret) authFail(hostname);
+      return ret;
+    }
+    case "Laika4": {
+      // Dog names for password
+      const ret = await authenticateWithDogNames(ns, hostname, details);
+      if (!ret) authFail(hostname);
+      return ret;
+    }
+    case "NIL": {
+      // TODO: yes, yesn't in data
+      const ret = false;
+      //if (!ret) authFail(hostname);
+      return ret;
+    }
+    case "OctantVoxel": {
+      // TODO: Base conversion
+      const ret = false;
+      //if (!ret) authFail(hostname);
       return ret;
     }
     case "OpenWebAccessPoint": {
-      // heart.bleed? for "Authentification Successful: xxxx" message
+      // TODO: heart.bleed? for "Authentification Successful: xxxx" message
       const ret = false;
-      //if (!ret) authFail(details);
+      //if (!ret) authFail(hostname);
+      return ret;
+    }
+    case "PHP 5.4": {
+      // TODO: Sorted password is in data
+      const ret = false;
+      //if (!ret) authFail(hostname);
       return ret;
     }
     case "Pr0verFl0": {
-      // ?
+      // TODO: ?
       const ret = false;
-      //if (!ret) authFail(details);
+      //if (!ret) authFail(hostname);
+      return ret;
+    }
+    case "RateMyPix.Auth": {
+      // TODO: 🌶️🌶️🌶️🌶️🌶️ Make it spicy!
+      const ret = false;
+      //if (!ret) authFail(hostname);
+      return ret;
+    }
+    case "ZeroLogon": {
+      // No password
+      const ret = await authenticateWithNoPassword(ns, hostname);
+      if (!ret) authFail(hostname);
       return ret;
     }
     /*case "": {
-      // ?
+      // TODO: ?
       const ret = false;
-      //if (!ret) authFail(details);
+      //if (!ret) authFail(hostname);
       return ret;
     }*/
-
+    /*case "": {
+      // TODO: ?
+      const ret = false;
+      //if (!ret) authFail(hostname);
+      return ret;
+    }*/
     default:
       ns.tprint(`
 
@@ -177,7 +189,10 @@ Unhandled Model: ${details.modelId}`
  * @param {string} hostname the name of the server to attempt to authorize on.
  */
 const authenticateWithNoPassword = async (ns, hostname) => {
-  const result = await ns.dnet.authenticate(hostname, "");
+  //let result = await ns.dnet.authenticate(hostname, "");
+  //if (!result.success) {
+  let result = ns.dnet.connectToSession(hostname, "");
+  //}
   // TODO: store discovered passwords somewhere safe, in case we need them later
   return result.success;
 };
@@ -196,6 +211,9 @@ const authenticateWithDefaultPassword = async (ns, hostname, details) => {
     case 4: {
       if (details.passwordFormat === "numeric") {
         result = await ns.dnet.authenticate(hostname, "0000");
+        if (!result.success) {
+          result = ns.dnet.connectToSession(hostname, "0000");
+        }
       }
       break;
     }
@@ -203,18 +221,31 @@ const authenticateWithDefaultPassword = async (ns, hostname, details) => {
       switch (details.passwordFormat) {
         case "alphabetic": {
           result = await ns.dnet.authenticate(hostname, "admin");
+          if (!result.success) {
+            result = ns.dnet.connectToSession(hostname, "admin");
+          }
           break;
         }
         case "numeric": {
           result = await ns.dnet.authenticate(hostname, "12345");
+          if (!result.success) {
+            result = ns.dnet.connectToSession(hostname, "12345");
+          }
+          break;
         }
+        default:
+          result = { success: false };
       }
       break;
     }
     case 8: {
       if (details.passwordFormat === "alphabetic") {
         result = await ns.dnet.authenticate(hostname, "password");
+        if (!result.success) {
+          result = ns.dnet.connectToSession(hostname, "password");
+        }
       }
+      break;
     }
     default:
       result = { success: false };
@@ -236,13 +267,23 @@ const authenticateWithDogNames = async (ns, hostname, details) => {
   switch (details.passwordLength) {
     case 4: {
       result = await ns.dnet.authenticate(hostname, "fido");
-      if (!result) {
-        result = await ns.dnet.authenticate(hostname, "spot");
+      if (!result.success) {
+        result = ns.dnet.connectToSession(hostname, "fido");
+        if (!result.success) {
+          result = await ns.dnet.authenticate(hostname, "spot");
+          if (!result.success) {
+            result = ns.dnet.connectToSession(hostname, "spot");
+          }
+        }
       }
       break;
     }
     case 5: {
-      //result = await ns.dnet.authenticate(hostname, "???");
+      result = await ns.dnet.authenticate(hostname, "rover");
+      if (!result.success) {
+        result = ns.dnet.connectToSession(hostname, "rover");
+      }
+      break;
     }
     default:
       result = { success: false };
@@ -264,15 +305,50 @@ const authenticateParseFromData = async (ns, hostname, data) => {
       password += char;
     }
   }
-  const result = await ns.dnet.authenticate(hostname, Number(password));
+  let result = await ns.dnet.authenticate(hostname, Number(password));
+  if (!result.success) {
+    result = ns.dnet.connectToSession(hostname, Number(password));
+  }
   return result.success;
 };
 
-/** @param {NS} ns */
-const openAllCaches = (ns) => {
-  ns.ls(ns.self().server, ".cache")
-    .forEach((cache) => ns.dnet.openCache(cache));
-}
+/**
+ * Authenticates on 'BellaCuore' type servers.
+ * @param {NS} ns
+ * @param {string} hostname the name of the server to attempt to authorize on.
+ * @param {ServerAuthDetails.data} data the details.data of the server.
+ */
+const authenticateWithRomanNumerals = async (ns, hostname, data) => {
+  const romanNumeral = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+  let convertValues = [];
+  for (const char of data) {
+    convertValues.push(romanNumeral[char]);
+  }
+  let password = 0;
+  for (let i = 0; i < convertValues.length; ++i) {
+    if (i === convertValues.length - 1
+      || (convertValues[i] >= convertValues[i + 1])
+    ) {
+      password += convertValues[i];
+    }
+    else {
+      password -= convertValues[i];
+    }
+  }
+  let result = await ns.dnet.authenticate(hostname, Number(password));
+  if (!result.success) {
+    result = ns.dnet.connectToSession(hostname, Number(password));
+  }
+  console.log(
+    `BellaCuore
+hostname: ${hostname}
+data: ${data}
+convertValues[]: ${convertValues}
+password: ${password}
+success: ${result.success}`
+  );
+  return result.success;
+};
 
 // This lets you tab-complete putting "--tail" on the run command so you can see the script logs as it runs
 export function autocomplete(data) {
