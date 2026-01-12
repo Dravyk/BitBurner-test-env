@@ -1,4 +1,4 @@
 export async function main(ns: NS) {
-  ns.run("overview.ts");
-  ns.run("darknet-crawler.js");
+  ns.run("overview.ts", { temporary: true });
+  ns.run("darknet-test.ts");
 }
