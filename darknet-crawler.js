@@ -55,7 +55,8 @@ export const serverSolver = async (ns, hostname, details) => {
 
   const authFail = (hostname) => {
     const details = ns.dnet.getServerAuthDetails(hostname);
-    ns.tprintf(`
+    if (details.isOnline && details.isConnectedToCurrentServer) {
+      ns.tprintf(`
 
 Failed to Authenticate
 Model: ${details.modelId}
@@ -64,18 +65,31 @@ Length: ${details.passwordLength}
 Hint: ${details.passwordHint}
 Online: ${details.isOnline}
 Connected: ${details.isConnectedToCurrentServer}`
-    );
+      );
+    }
   }
 
   switch (details.modelId) {
+    case "110100100": {
+      // TODO: 420, weed related?
+      const ret = false;
+      //if (!ret) authFail(hostname);
+      return ret;
+    }
+    /*case "2G_cellular": {
+      // TODO: ?
+      const ret = false;
+      //if (!ret) authFail(hostname);
+      return ret;
+    }*/
     case "AccountsManager_4.2": {
       // TODO: Password range in hint
-      const ret = false;
-      //if (!ret) authFail(details);
+      const ret = authenticateParseRangeFromHint(ns, hostname, details);
+      if (!ret) authFail(details);
       return ret;
     }
     case "BellaCuore": {
-      // TODO: Convert roman numerals
+      // Convert roman numerals
       const ret = await authenticateWithRomanNumerals(ns, hostname, details.data);
       if (!ret) authFail(hostname);
       return ret;
@@ -98,6 +112,12 @@ Connected: ${details.isConnectedToCurrentServer}`
       if (!ret) authFail(hostname);
       return ret;
     }
+    /*case "EuroZone Free": {
+      // TODO: ?
+      const ret = false;
+      //if (!ret) authFail(hostname);
+      return ret;
+    }*/
     case "Factori-Os":
     // Same as ModuloTerm??
     case "ModuloTerm": {
@@ -118,6 +138,12 @@ Connected: ${details.isConnectedToCurrentServer}`
       if (!ret) authFail(hostname);
       return ret;
     }
+    /*case "MathML": {
+      // TODO: ?
+      const ret = false;
+      //if (!ret) authFail(hostname);
+      return ret;
+    }*/
     case "NIL": {
       // TODO: yes, yesn't in data
       const ret = false;
@@ -125,9 +151,9 @@ Connected: ${details.isConnectedToCurrentServer}`
       return ret;
     }
     case "OctantVoxel": {
-      // TODO: Base conversion
-      const ret = false;
-      //if (!ret) authFail(hostname);
+      // Base conversion
+      const ret = authenticateWithBaseConversion(ns, hostname, details.data);
+      if (!ret) authFail(hostname);
       return ret;
     }
     case "OpenWebAccessPoint": {
@@ -136,6 +162,12 @@ Connected: ${details.isConnectedToCurrentServer}`
       //if (!ret) authFail(hostname);
       return ret;
     }
+    /*case "OrdoXenos": {
+      // TODO: ?
+      const ret = false;
+      //if (!ret) authFail(hostname);
+      return ret;
+    }*/
     case "PHP 5.4": {
       // TODO: Sorted password is in data
       const ret = false;
@@ -148,24 +180,30 @@ Connected: ${details.isConnectedToCurrentServer}`
       //if (!ret) authFail(hostname);
       return ret;
     }
+    /*case "PrimeTime 2": {
+      // TODO: ?
+      const ret = false;
+      //if (!ret) authFail(hostname);
+      return ret;
+    }*/
     case "RateMyPix.Auth": {
       // TODO: 🌶️🌶️🌶️🌶️🌶️ Make it spicy!
       const ret = false;
       //if (!ret) authFail(hostname);
       return ret;
     }
+    /*case "TopPass": {
+      // TODO: ?
+      const ret = false;
+      //if (!ret) authFail(hostname);
+      return ret;
+    }*/
     case "ZeroLogon": {
       // No password
       const ret = await authenticateWithNoPassword(ns, hostname);
       if (!ret) authFail(hostname);
       return ret;
     }
-    /*case "": {
-      // TODO: ?
-      const ret = false;
-      //if (!ret) authFail(hostname);
-      return ret;
-    }*/
     /*case "": {
       // TODO: ?
       const ret = false;
@@ -189,10 +227,10 @@ Unhandled Model: ${details.modelId}`
  * @param {string} hostname the name of the server to attempt to authorize on.
  */
 const authenticateWithNoPassword = async (ns, hostname) => {
-  //let result = await ns.dnet.authenticate(hostname, "");
-  //if (!result.success) {
-  let result = ns.dnet.connectToSession(hostname, "");
-  //}
+  let result = await ns.dnet.authenticate(hostname, "");
+  if (!result.success) {
+    result = ns.dnet.connectToSession(hostname, "");
+  }
   // TODO: store discovered passwords somewhere safe, in case we need them later
   return result.success;
 };
@@ -265,6 +303,13 @@ const authenticateWithDefaultPassword = async (ns, hostname, details) => {
 const authenticateWithDogNames = async (ns, hostname, details) => {
   let result;
   switch (details.passwordLength) {
+    case 3: {
+      result = await ns.dnet.authenticate(hostname, "max");
+      if (!result.success) {
+        result = ns.dnet.connectToSession(hostname, "max");
+      }
+      break;
+    }
     case 4: {
       result = await ns.dnet.authenticate(hostname, "fido");
       if (!result.success) {
@@ -295,8 +340,7 @@ const authenticateWithDogNames = async (ns, hostname, details) => {
  * Authenticates on 'CloudBlare(tm)' and 'DeskMemo_3.1' type servers.
  * @param {NS} ns
  * @param {string} hostname the name of the server to attempt to authorize on.
- * @param {ServerAuthDetails & {isOnline: boolean} details
- *   the details of the server.
+ * @param {ServerAuthDetails} data the details.data of the server.
  */
 const authenticateParseFromData = async (ns, hostname, data) => {
   let password = "";
@@ -316,37 +360,69 @@ const authenticateParseFromData = async (ns, hostname, data) => {
  * Authenticates on 'BellaCuore' type servers.
  * @param {NS} ns
  * @param {string} hostname the name of the server to attempt to authorize on.
- * @param {ServerAuthDetails.data} data the details.data of the server.
+ * @param {ServerAuthDetails} data the details.data of the server.
  */
 const authenticateWithRomanNumerals = async (ns, hostname, data) => {
-  const romanNumeral = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
-  let convertValues = [];
-  for (const char of data) {
-    convertValues.push(romanNumeral[char]);
-  }
+  const romanNumerals = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
   let password = 0;
-  for (let i = 0; i < convertValues.length; ++i) {
-    if (i === convertValues.length - 1
-      || (convertValues[i] >= convertValues[i + 1])
+  for (let i = 0; i < data.length; ++i) {
+    if (i === data.length - 1
+      || (romanNumerals[data[i]] >= romanNumerals[data[i + 1]])
     ) {
-      password += convertValues[i];
+      password += romanNumerals[data[i]];
     }
     else {
-      password -= convertValues[i];
+      password -= romanNumerals[data[i]];
     }
   }
-  let result = await ns.dnet.authenticate(hostname, Number(password));
+  let result = await ns.dnet.authenticate(hostname, password);
   if (!result.success) {
-    result = ns.dnet.connectToSession(hostname, Number(password));
+    result = ns.dnet.connectToSession(hostname, password);
   }
-  console.log(
-    `BellaCuore
-hostname: ${hostname}
-data: ${data}
-convertValues[]: ${convertValues}
-password: ${password}
-success: ${result.success}`
-  );
+  return result.success;
+};
+
+/**
+ * Authenticates on 'OctantVoxel' type servers.
+ * @param {NS} ns
+ * @param {string} hostname the name of the server to attempt to authorize on.
+ * @param {ServerAuthDetails} data the details.data of the server.
+ */
+const authenticateWithBaseConversion = async (ns, hostname, data) => {
+  const [base, value] = data.split(',');
+
+  let password = 0;
+  for (let i = 0, j = value.length - 1; i < value.length; ++i, --j) {
+    const char = value.charCodeAt(j);
+    const digit = char > 64 ? char - 55 : Number(value[j]);
+    password += digit * Math.pow(Number(base), i);
+  }
+
+  let result = await ns.dnet.authenticate(hostname, password);
+  if (!result.success) {
+    result = ns.dnet.connectToSession(hostname, password);
+  }
+  return result.success;
+};
+
+/**
+ * Authenticates on 'AccountsManager_4.2' type servers.
+ * @param {NS} ns
+ * @param {string} hostname the name of the server to attempt to authorize on.
+ * @param {ServerAuthDetails} details the details of the server.
+ */
+const authenticateParseRangeFromHint = async (ns, hostname, details) => {
+  const range = details.passwordHint.match(/\d+/g) ?? [0, 0];
+
+  let result;
+  for (let i = range[0]; i < range[1]; ++i) {
+    const password = `${i}`.padStart(details.passwordLength, '0');
+    result = await ns.dnet.authenticate(hostname, password);
+    if (result.success) break;
+    result = ns.dnet.connectToSession(hostname, password);
+    if (result.success) break;
+  }
+
   return result.success;
 };
 
