@@ -83,7 +83,7 @@ Connected: ${details.isConnectedToCurrentServer}`
       return ret;
     }*/
     case "AccountsManager_4.2": {
-      // TODO: Password range in hint
+      // Password range in hint
       const ret = authenticateParseRangeFromHint(ns, hostname, details);
       if (!ret) authFail(details);
       return ret;
@@ -118,9 +118,7 @@ Connected: ${details.isConnectedToCurrentServer}`
       //if (!ret) authFail(hostname);
       return ret;
     }*/
-    case "Factori-Os":
-    // Same as ModuloTerm??
-    case "ModuloTerm": {
+    case "Factori-Os": {
       // TODO: Is divisible by ?
       const ret = false;
       //if (!ret) authFail(hostname);
@@ -412,15 +410,24 @@ const authenticateWithBaseConversion = async (ns, hostname, data) => {
  * @param {ServerAuthDetails} details the details of the server.
  */
 const authenticateParseRangeFromHint = async (ns, hostname, details) => {
-  const range = details.passwordHint.match(/\d+/g) ?? [0, 0];
+  let [lowest, highest] = details.passwordHint.match(/\d+/g);
+  let guess = Math.round((highest - lowest) / 2);
 
   let result;
-  for (let i = range[0]; i < range[1]; ++i) {
-    const password = `${i}`.padStart(details.passwordLength, '0');
+  while (true) {
+    const password = `${guess}`.padStart(details.passwordLength, '0');
     result = await ns.dnet.authenticate(hostname, password);
     if (result.success) break;
     result = ns.dnet.connectToSession(hostname, password);
     if (result.success) break;
+    if (details.data === "Lower") {
+      highest = guess;
+      guess -= Math.floor((guess - lowest) / 2);
+    }
+    else { // details.data = Higher
+      lowest = guess;
+      guess += Math.ceil((highest - guess) / 2);
+    }
   }
 
   return result.success;
