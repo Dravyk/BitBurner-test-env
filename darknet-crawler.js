@@ -84,7 +84,7 @@ Connected: ${details.isConnectedToCurrentServer}`
     }*/
     case "AccountsManager_4.2": {
       // Password range in hint
-      const ret = authenticateParseRangeFromHint(ns, hostname, details);
+      const ret = await authenticateParseRangeFromHint(ns, hostname, details);
       if (!ret) authFail(details);
       return ret;
     }
@@ -132,7 +132,9 @@ Connected: ${details.isConnectedToCurrentServer}`
     }
     case "Laika4": {
       // Dog names for password
-      const ret = await authenticateWithDogNames(ns, hostname, details);
+      const ret = await authenticateWithDogNames(
+        ns, hostname, details.passwordLength
+      );
       if (!ret) authFail(hostname);
       return ret;
     }
@@ -150,14 +152,14 @@ Connected: ${details.isConnectedToCurrentServer}`
     }
     case "OctantVoxel": {
       // Base conversion
-      const ret = authenticateWithBaseConversion(ns, hostname, details.data);
+      const ret = await authenticateWithBaseConversion(ns, hostname, details.data);
       if (!ret) authFail(hostname);
       return ret;
     }
     case "OpenWebAccessPoint": {
       // TODO: heart.bleed? for "Authentification Successful: xxxx" message
-      const ret = false;
-      //if (!ret) authFail(hostname);
+      const ret = await authenticateFromHeartbleed(ns, hostname);
+      if (!ret) authFail(hostname);
       return ret;
     }
     /*case "OrdoXenos": {
@@ -219,16 +221,31 @@ Unhandled Model: ${details.modelId}`
 };
 
 /**
+* Attempts to authenticate with provided password,
+* @param {NS} ns
+* @param {string} hostname the name of the server to attempt to authorize on.
+* @param {string} password to attempt to authenticate with.
+* @param {number?} additionalMsec optional. The number of additional
+*   milliseconds to add to the run time of the authentication request.
+*   Default is 0.
+* @returns a promise that resolves to a {@link DarknetResult } object.
+*/
+const authenticate = async (ns, hostname, password, additionalMsec = 0) => {
+  let result = await ns.dnet.authenticate(hostname, password, additionalMsec);
+  if (!result.success) {
+    result = ns.dnet.connectToSession(hostname, password);
+  }
+  return result;
+};
+
+/**
  * Authenticates on 'ZeroLogon' type servers,
  *   which always have an empty password.
  * @param {NS} ns
  * @param {string} hostname the name of the server to attempt to authorize on.
  */
 const authenticateWithNoPassword = async (ns, hostname) => {
-  let result = await ns.dnet.authenticate(hostname, "");
-  if (!result.success) {
-    result = ns.dnet.connectToSession(hostname, "");
-  }
+  let result = await authenticate(ns, hostname, "");
   // TODO: store discovered passwords somewhere safe, in case we need them later
   return result.success;
 };
@@ -246,27 +263,18 @@ const authenticateWithDefaultPassword = async (ns, hostname, details) => {
   switch (details.passwordLength) {
     case 4: {
       if (details.passwordFormat === "numeric") {
-        result = await ns.dnet.authenticate(hostname, "0000");
-        if (!result.success) {
-          result = ns.dnet.connectToSession(hostname, "0000");
-        }
+        result = await authenticate(ns, hostname, "0000");
       }
       break;
     }
     case 5: {
       switch (details.passwordFormat) {
         case "alphabetic": {
-          result = await ns.dnet.authenticate(hostname, "admin");
-          if (!result.success) {
-            result = ns.dnet.connectToSession(hostname, "admin");
-          }
+          result = await authenticate(ns, hostname, "admin");
           break;
         }
         case "numeric": {
-          result = await ns.dnet.authenticate(hostname, "12345");
-          if (!result.success) {
-            result = ns.dnet.connectToSession(hostname, "12345");
-          }
+          result = await authenticate(ns, hostname, "12345");
           break;
         }
         default:
@@ -276,10 +284,7 @@ const authenticateWithDefaultPassword = async (ns, hostname, details) => {
     }
     case 8: {
       if (details.passwordFormat === "alphabetic") {
-        result = await ns.dnet.authenticate(hostname, "password");
-        if (!result.success) {
-          result = ns.dnet.connectToSession(hostname, "password");
-        }
+        result = await authenticate(ns, hostname, "password");
       }
       break;
     }
@@ -295,39 +300,23 @@ const authenticateWithDefaultPassword = async (ns, hostname, details) => {
  *   which always have a dog's name password.
  * @param {NS} ns
  * @param {string} hostname the name of the server to attempt to authorize on.
- * @param {ServerAuthDetails & {isOnline: boolean} details
- *   the details of the server.
+ * @param {number} passwordLength the length of the password.
  */
-const authenticateWithDogNames = async (ns, hostname, details) => {
+const authenticateWithDogNames = async (ns, hostname, passwordLength) => {
   let result;
-  switch (details.passwordLength) {
-    case 3: {
-      result = await ns.dnet.authenticate(hostname, "max");
+  switch (passwordLength) {
+    case 3:
+      result = await authenticate(ns, hostname, "max");
+      break;
+    case 4:
+      result = await authenticate(ns, hostname, "fido");
       if (!result.success) {
-        result = ns.dnet.connectToSession(hostname, "max");
+        result = await authenticate(ns, hostname, "spot");
       }
       break;
-    }
-    case 4: {
-      result = await ns.dnet.authenticate(hostname, "fido");
-      if (!result.success) {
-        result = ns.dnet.connectToSession(hostname, "fido");
-        if (!result.success) {
-          result = await ns.dnet.authenticate(hostname, "spot");
-          if (!result.success) {
-            result = ns.dnet.connectToSession(hostname, "spot");
-          }
-        }
-      }
+    case 5:
+      result = await authenticate(ns, hostname, "rover");
       break;
-    }
-    case 5: {
-      result = await ns.dnet.authenticate(hostname, "rover");
-      if (!result.success) {
-        result = ns.dnet.connectToSession(hostname, "rover");
-      }
-      break;
-    }
     default:
       result = { success: false };
   }
@@ -335,10 +324,10 @@ const authenticateWithDogNames = async (ns, hostname, details) => {
 };
 
 /**
- * Authenticates on 'CloudBlare(tm)' and 'DeskMemo_3.1' type servers.
+ * Authenticates on 'CloudBlare(tm)', 'DeskMemo_3.1' type servers.
  * @param {NS} ns
  * @param {string} hostname the name of the server to attempt to authorize on.
- * @param {ServerAuthDetails} data the details.data of the server.
+ * @param {string} data the data to parse numbers from.
  */
 const authenticateParseFromData = async (ns, hostname, data) => {
   let password = "";
@@ -347,10 +336,7 @@ const authenticateParseFromData = async (ns, hostname, data) => {
       password += char;
     }
   }
-  let result = await ns.dnet.authenticate(hostname, Number(password));
-  if (!result.success) {
-    result = ns.dnet.connectToSession(hostname, Number(password));
-  }
+  let result = await authenticate(ns, hostname, Number(password));
   return result.success;
 };
 
@@ -361,22 +347,17 @@ const authenticateParseFromData = async (ns, hostname, data) => {
  * @param {ServerAuthDetails} data the details.data of the server.
  */
 const authenticateWithRomanNumerals = async (ns, hostname, data) => {
-  const romanNumerals = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+  const roman = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
   let password = 0;
   for (let i = 0; i < data.length; ++i) {
-    if (i === data.length - 1
-      || (romanNumerals[data[i]] >= romanNumerals[data[i + 1]])
-    ) {
-      password += romanNumerals[data[i]];
+    if (i === data.length - 1 || (roman[data[i]] >= roman[data[i + 1]])) {
+      password += roman[data[i]];
     }
     else {
-      password -= romanNumerals[data[i]];
+      password -= roman[data[i]];
     }
   }
-  let result = await ns.dnet.authenticate(hostname, password);
-  if (!result.success) {
-    result = ns.dnet.connectToSession(hostname, password);
-  }
+  let result = await authenticate(ns, hostname, password);
   return result.success;
 };
 
@@ -396,10 +377,7 @@ const authenticateWithBaseConversion = async (ns, hostname, data) => {
     password += digit * Math.pow(Number(base), i);
   }
 
-  let result = await ns.dnet.authenticate(hostname, password);
-  if (!result.success) {
-    result = ns.dnet.connectToSession(hostname, password);
-  }
+  let result = await authenticate(ns, hostname, password);
   return result.success;
 };
 
@@ -416,20 +394,40 @@ const authenticateParseRangeFromHint = async (ns, hostname, details) => {
   let result;
   while (true) {
     const password = `${guess}`.padStart(details.passwordLength, '0');
-    result = await ns.dnet.authenticate(hostname, password);
-    if (result.success) break;
-    result = ns.dnet.connectToSession(hostname, password);
+    result = await authenticate(ns, hostname, password);
     if (result.success) break;
     if (details.data === "Lower") {
       highest = guess;
-      guess -= Math.floor((guess - lowest) / 2);
+      guess -= Math.round((highest - lowest) / 2);
     }
     else { // details.data = Higher
       lowest = guess;
-      guess += Math.ceil((highest - guess) / 2);
+      guess += Math.round((highest - lowest) / 2);
     }
   }
 
+  return result.success;
+};
+
+/**
+ * Authenticates on 'OpenWebAccessPoint' type servers.
+ * @param {NS} ns
+ * @param {string} hostname the name of the server to attempt to authorize on.
+ */
+const authenticateFromHeartbleed = async (ns, hostname) => {
+  let message;
+  while (true) {
+    const bled = await ns.dnet.heartbleed(hostname, { peek: true });
+    if (!bled.isConnectedToCurrentServer) return { success: false };
+    if (bled.success) {
+      message = bled.logs.filter((log) => log.includes("Authentication successful"));
+      if (message[0]) {
+        break;
+      }
+    }
+    await ns.sleep(1e3);
+  }
+  const result = await authenticateParseFromData(ns, hostname, message[0]);
   return result.success;
 };
 
