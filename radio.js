@@ -19,7 +19,8 @@ globalThis.STATIONS = [
 globalThis.musicSource = 0;
 globalThis.musicPlaying = false;
 
-export async function main(ns: NS) {
+/** @param {NS} ns */
+export async function main(ns) {
   ns.disableLog("ALL");
   ns.ui.openTail();
   ns.ui.resizeTail(250, 55);
