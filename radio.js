@@ -25,7 +25,6 @@ export async function main(ns) {
   ns.disableLog("ALL");
   ns.ui.openTail();
   ns.ui.resizeTail(500, 55);
-  //await ns.asleep(1e3);
 
   const doc = globalThis["document"];
 
@@ -33,7 +32,7 @@ export async function main(ns) {
     .getElementsByTagName("h6"))
     .filter((el) => el.textContent.trim() === ns.getScriptName())[0];
 
-  const radio = React.createElement("div", { id: "radio" },
+  ns.printRaw(React.createElement("div", { id: "radio" },
     React.createElement("font",
       { color: `${ns.ui.getTheme()["cha"]}` },
       React.createElement("span", { class: "controls" },
@@ -99,10 +98,7 @@ export async function main(ns) {
         id: "radioplayer", src: `${globalThis.STATIONS[0][1]}`
       }),
     ),
-  );
-
-  ns.printRaw(radio);
-  //doc.getElementById("radioplayer").volume = 0.5;
+  ));
 
   ns.ui.setTailTitle(React.createElement("div", { id: "title" },
     React.createElement("style", { type: "text/css" }, `
@@ -129,6 +125,9 @@ export async function main(ns) {
       ),
     ),
   ));
+
+  await ns.asleep(200);
+  doc.getElementById("radioplayer").volume = 0.2;
 }
 
 /*
