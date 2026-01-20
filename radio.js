@@ -1,30 +1,31 @@
 globalThis.STATIONS = [
-  ["Cool FM - Trance Elektro", "https://mediagw.e-tiger.net/stream/zc14"],
-  ["Bunker TV", "https://bunkertv.org:8000/bunkertv"],
-  ["Deep Dance Radio", "https://cast1.torontocast.com:2205/stream"],
-  ["Synthwave City FM", "https://synthwave-rex.radioca.st/stream"],
   ["96.5 WKLH", "https://live.amperwave.net/direct/saga-wklhfmmp3-ibc2"],
-  ["Classic Rock", "https://netradio.classicfm.dk/classicrock"],
-  ["Chilltrax", "https://streamssl.chilltrax.com/stream/1/"],
-  ["Horrorsynth", "https://stream.nightride.fm/horrorsynth.m4a"],
-  ["Rekt", "https://stream.nightride.fm/rekt.m4a"],
-  ["Nightride", "https://stream.nightride.fm/nightride.m4a"],
-  ["Rektory", "https://stream.nightride.fm/rektory.m4a"],
   ["Chillsynth", "https://stream.nightride.fm/chillsynth.m4a"],
-  ["Spacesynth", "https://stream.nightride.fm/spacesynth.m4a"],
   ["Darksynth", "https://stream.nightride.fm/darksynth.m4a"],
-  ["EBSM", "https://stream.nightride.fm/ebsm.m4a"],
   ["Datawave", "https://stream.nightride.fm/datawave.m4a"],
+  ["EBSM", "https://stream.nightride.fm/ebsm.m4a"],
+  ["Horrorsynth", "https://stream.nightride.fm/horrorsynth.m4a"],
+  ["Nightride", "https://stream.nightride.fm/nightride.m4a"],
+  ["Rekt", "https://stream.nightride.fm/rekt.m4a"],
+  ["Rektory", "https://stream.nightride.fm/rektory.m4a"],
+  ["Spacesynth", "https://stream.nightride.fm/spacesynth.m4a"],
+  //["Bunker TV", "https://bunkertv.org:8000/bunkertv"],
+  //["Classic Rock", "https://netradio.classicfm.dk/classicrock"],
+  //["Cool FM - Trance Elektro", "https://mediagw.e-tiger.net/stream/zc14"],
+  //["Chilltrax", "https://streamssl.chilltrax.com/stream/1/"],
+  //["Deep Dance Radio", "https://cast1.torontocast.com:2205/stream"],
+  //["Synthwave City FM", "https://synthwave-rex.radioca.st/stream"],
 ];
 globalThis.musicSource = 0;
 globalThis.musicPlaying = false;
+globalThis.musicMute = false;
 
 /** @param {NS} ns */
 export async function main(ns) {
   ns.disableLog("ALL");
   ns.ui.openTail();
-  ns.ui.resizeTail(250, 55);
-  await ns.asleep(1e3);
+  ns.ui.resizeTail(500, 55);
+  //await ns.asleep(1e3);
 
   const doc = globalThis["document"];
 
@@ -57,6 +58,12 @@ export async function main(ns) {
       }, " [vol down]"),
       React.createElement('a', {
         onClick: () => {
+          globalThis.musicMute = !globalThis.musicMute;
+          doc.getElementById("radioplayer").muted = globalThis.musicMute;
+        }
+      }, " [mute]"),
+      React.createElement('a', {
+        onClick: () => {
           ++globalThis.musicSource;
           doc.getElementById("radioplayer").src = globalThis.STATIONS[
             globalThis.musicSource % globalThis.STATIONS.length
@@ -64,7 +71,7 @@ export async function main(ns) {
           doc.getElementById("radioplayer")[
             globalThis.musicPlaying ? "play" : "pause"
           ]();
-          doc.getElementById("musicTitle").innerText = ' ' + globalThis.STATIONS[
+          doc.getElementById("musicTitle").innerText = ' ' + globalThis.STATIONS[
             globalThis.musicSource % globalThis.STATIONS.length
           ][0];
         }
@@ -82,7 +89,7 @@ export async function main(ns) {
     { color: `${ns.ui.getTheme()["cha"]}` },
     React.createElement("span", {
       id: "musicTitle", class: "MuiTypography-root MuiTypography-body1"
-    }, ` ${globalThis.STATIONS[0][0].trim()}`))
+    }, ` ${globalThis.STATIONS[0][0].trim()}`))
   );
 }
 /*
@@ -139,7 +146,7 @@ export async function main(ns) {
       document.getElementById("radioplayer")[
         globalThis.musicPlaying ? "play" : "pause"
       ]();
-      document.getElementById("musicTitle").innerText=" " + globalThis.STATIONS[
+      document.getElementById("musicTitle").innerText=" " + globalThis.STATIONS[
         globalThis.musicSource % globalThis.STATIONS.length
       ][0];
     }'>
