@@ -228,11 +228,11 @@ Unhandled Model: ${details.modelId}`
  */
 const authenticate = async (ns, hostname, passwords) => {
   let result;
-  for (const password in passwords) {
+  for (const password of passwords) {
     result = await ns.dnet.authenticate(hostname, password);
     if (result.success) break;
   }
-  return result.success;
+  return result;
 }
 
 /**
@@ -266,8 +266,8 @@ const authenticateWithDefaultPassword = async (ns, hostname, details) => {
   else {
     return { success: false };
   }
-  const result = await ns.dnet.authenticate(
-    hostname, passwords.filter((p) => p.length === details.passwordLength)[0]
+  const result = await ns.dnet.authenticate(hostname, passwords
+    .filter((p) => p.length === details.passwordLength)[0]
   );
   return result.success;
 };
@@ -282,7 +282,8 @@ const authenticateWithDefaultPassword = async (ns, hostname, details) => {
 const authenticateWithDogNames = async (ns, hostname, passwordLength) => {
   const passwords = ["max", "fido", "spot", "rover"]
     .filter((p) => p.length === passwordLength);
-  const result = await authenticate(hostname, passwords);
+  console.log(`Laika: ${passwords}`)
+  const result = await authenticate(ns, hostname, passwords);
   return result.success;
 };
 
