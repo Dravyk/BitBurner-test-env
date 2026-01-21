@@ -1,4 +1,5 @@
 globalThis.STATIONS = [
+  //["Cool FM - Trance Elektro", "https://mediagw.e-tiger.net/stream/zc14"],
   ["96.5 WKLH", "https://live.amperwave.net/direct/saga-wklhfmmp3-ibc2"],
   ["Chillsynth", "https://stream.nightride.fm/chillsynth.m4a"],
   ["Darksynth", "https://stream.nightride.fm/darksynth.m4a"],
@@ -11,7 +12,6 @@ globalThis.STATIONS = [
   ["Spacesynth", "https://stream.nightride.fm/spacesynth.m4a"],
   //["Bunker TV", "https://bunkertv.org:8000/bunkertv"],
   //["Classic Rock", "https://netradio.classicfm.dk/classicrock"],
-  //["Cool FM - Trance Elektro", "https://mediagw.e-tiger.net/stream/zc14"],
   //["Chilltrax", "https://streamssl.chilltrax.com/stream/1/"],
   //["Deep Dance Radio", "https://cast1.torontocast.com:2205/stream"],
   //["Synthwave City FM", "https://synthwave-rex.radioca.st/stream"],
@@ -36,7 +36,7 @@ export async function main(ns) {
     React.createElement("font",
       { color: `${ns.ui.getTheme()["cha"]}` },
       React.createElement("span", { class: "controls" },
-        React.createElement('a', {
+        React.createElement('a', { id: "play-btn",
           onClick: () => {
             globalThis.musicPlaying = !globalThis.musicPlaying;
             doc.getElementById("radioplayer")[
@@ -127,42 +127,38 @@ export async function main(ns) {
   ));
 
   await ns.asleep(200);
-  doc.getElementById("radioplayer").volume = 0.2;
+  doc.getElementById("radioplayer").volume = 0.1;
 
   // test button
   ns.printRaw(React.createElement("div", { class: "test" },
     React.createElement("style", { type: "text/css" }, `
-      .button1 {
-        border: none;
-        border-radius: 8px;
-        color: white;
-        padding: 4px 10px;
+      .button {
+        border: 1px solid ${ns.ui.getTheme()["well"]};
+        color: ${ns.ui.getTheme()["primary"]};
+        padding: 8px 15px;
         text-align: center;
         text-decoration: none;
         display: inline-block;
-        font-size: 16px;
+        font-family: ${ns.ui.getStyles()["fontFamily"]};
+        font-size: ${ns.ui.getStyles()["tailFontSize"] - 1.5}px;
         margin: 4px 2px;
-        transition-duration: 1s;
+        transition-duration: 0.25s;
         cursor: pointer;
       }
-     .btn_test {
-       background-color: #04AA6D;
-       color: white;
-       border: 2px dotted white;
-     }
-     .btn_test:hover {
-       background-color: white; 
-       color: black; 
-       border: 2px solid #04AA6D;
-     }
+      .btn-test {
+        background-color: ${ns.ui.getTheme()["button"]};
+      }
+      .btn-test:hover {
+        background-color: ${ns.ui.getTheme()["backgroundsecondary"]}; 
+      }
     `),
     React.createElement("span", { class: "ikuhg" },
       React.createElement("button", {
-        class: "MuiButtonBase-root MuiButton-root MuiButton-text MuiButton-textPrimary MuiButton-sizeMedium MuiButton-textSizeMedium MuiButton-colorPrimary MuiButton-root MuiButton-text MuiButton-textPrimary MuiButton-sizeMedium MuiButton-textSizeMedium MuiButton-colorPrimary css-1qnhdfm-MuiButtonBase-root-MuiButton-root",
-        type: "button",
-      }, "test",
-        React.createElement("span", { class: "MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root" }
-        ),
+        class: "button btn-test", type: "button",
+        onclick: `() => {
+          doc.getElementById("play-btn").innerText = "[Pause]";
+        }`,
+      }, "Play",
       ),
     ),
   ));
