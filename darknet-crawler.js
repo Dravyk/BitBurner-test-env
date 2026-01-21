@@ -31,7 +31,7 @@ export async function main(ns) {
 
     // TODO: take advantage of the extra ram on darknet servers to run ns.dnet.phishingAttack calls for money
 
-    await ns.asleep(5000);
+    await ns.asleep(200);
   }
 }
 
