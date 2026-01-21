@@ -24,7 +24,7 @@ globalThis.musicMute = false;
 export async function main(ns) {
   ns.disableLog("ALL");
   ns.ui.openTail();
-  ns.ui.resizeTail(500, 55);
+  ns.ui.resizeTail(500, 100);
 
   const doc = globalThis["document"];
 
@@ -64,9 +64,9 @@ export async function main(ns) {
         }, " [mute]"),
         React.createElement('a', {
           onClick: () => {
-            globalThis.musicSource = globalThis.musicSource > 0 ?
-              --globalThis.musicSource
-              : globalThis.STATIONS.length - 1;
+            globalThis.musicSource = (--globalThis.musicSource
+              + globalThis.STATIONS.length)
+              % globalThis.STATIONS.length;
             doc.getElementById("radioplayer").src = globalThis.STATIONS[
               globalThis.musicSource
             ][1];
@@ -80,8 +80,8 @@ export async function main(ns) {
         }, " [prev]"),
         React.createElement('a', {
           onClick: () => {
-            ++globalThis.musicSource;
-            globalThis.musicSource %= globalThis.STATIONS.length;
+            globalThis.musicSource = ++globalThis.musicSource
+              % globalThis.STATIONS.length;
             doc.getElementById("radioplayer").src = globalThis.STATIONS[
               globalThis.musicSource
             ][1];
@@ -128,76 +128,42 @@ export async function main(ns) {
 
   await ns.asleep(200);
   doc.getElementById("radioplayer").volume = 0.2;
-}
 
-/*
-<div id="radio">
-  <style type="text/css">
-    .controls {
-      display: inline-block;
-      overflow: hidden;
-    }
-    .marquee {
-      display: inline-block;
-      width: 164px;
-      overflow: hidden;
-    }
-    .marquee text {
-      display: flex;
-      animation: marquee 10s linear infinite;
-    }
-    @keyframes marquee {
-      0% { transform: translate(0, 0); }
-      50% { transform: translate(-100%, 0); }
-    }
-  </style>
-  <font
-    color="${ns.ui.getTheme()["cha"]}"
-    family=
-    >
-    <span class="controls">
-    <a onclick='{
-      globalThis.musicPlaying = !globalThis.musicPlaying;
-      document.getElementById("radioplayer")[
-        globalThis.musicPlaying ? "play" : "pause"
-      ]();
-    }'>
-       ⏯
-    </a>
-    <a onclick='{
-      const rPlayer = document.getElementById("radioplayer");
-      if (rPlayer.volume > 0) rPlayer.volume -= 0.1;
-    }'>
-      🔽
-    </a>
-    <a onclick='{
-      const rPlayer = document.getElementById("radioplayer");
-      if (rPlayer.volume < 1) rPlayer.volume += 0.1;
-    }'>
-      🔼
-    </a>
-    <a onclick='{
-      ++globalThis.musicSource;
-      document.getElementById("radioplayer").src=globalThis.STATIONS[
-        globalThis.musicSource % globalThis.STATIONS.length
-      ][1];
-      document.getElementById("radioplayer")[
-        globalThis.musicPlaying ? "play" : "pause"
-      ]();
-      document.getElementById("musicTitle").innerText=" " + globalThis.STATIONS[
-        globalThis.musicSource % globalThis.STATIONS.length
-      ][0];
-    }'>
-      ⏭
-    </a>
-    </span>
-    <audio id="radioplayer" src=${globalThis.STATIONS[0][1]}>
-    </audio>
-    <span class="marquee">
-      <text class="MuiTypography-root MuiTypography-body1" id="musicTitle">
-         ${globalThis.STATIONS[0][0].trim()}
-      </text>
-    </span>
-  </font>
-</div>
-*/
+  // test button
+  ns.printRaw(React.createElement("div", { class: "test" },
+    React.createElement("style", { type: "text/css" }, `
+      .button1 {
+        border: none;
+        border-radius: 8px;
+        color: white;
+        padding: 4px 10px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
+        transition-duration: 1s;
+        cursor: pointer;
+      }
+     .btn_test {
+       background-color: #04AA6D;
+       color: white;
+       border: 2px dotted white;
+     }
+     .btn_test:hover {
+       background-color: white; 
+       color: black; 
+       border: 2px solid #04AA6D;
+     }
+    `),
+    React.createElement("span", { class: "ikuhg" },
+      React.createElement("button", {
+        class: "MuiButtonBase-root MuiButton-root MuiButton-text MuiButton-textPrimary MuiButton-sizeMedium MuiButton-textSizeMedium MuiButton-colorPrimary MuiButton-root MuiButton-text MuiButton-textPrimary MuiButton-sizeMedium MuiButton-textSizeMedium MuiButton-colorPrimary css-1qnhdfm-MuiButtonBase-root-MuiButton-root",
+        type: "button",
+      }, "test",
+        React.createElement("span", { class: "MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root" }
+        ),
+      ),
+    ),
+  ));
+}
