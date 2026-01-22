@@ -24,7 +24,7 @@ globalThis.musicMute = false;
 export async function main(ns) {
   ns.disableLog("ALL");
   ns.ui.openTail();
-  ns.ui.resizeTail(451, 75);
+  ns.ui.resizeTail(407, 73);
 
   const doc = globalThis["document"];
 
@@ -47,7 +47,7 @@ export async function main(ns) {
         text-decoration: none;
         display: inline-block;
         font-family: ${ns.ui.getStyles()["fontFamily"]};
-        font-size: 12px;
+        font-size: 10.5px;
         margin: 4px 2px;
         transition-duration: 0.25s;
         cursor: pointer;
@@ -60,10 +60,10 @@ export async function main(ns) {
       }
     `),
     React.createElement("span", { class: "controls" },
-      createButton("play-btn", "Play ", () => {
+      createButton("play-btn", "Play", () => {
         globalThis.musicPlaying = !globalThis.musicPlaying;
         doc.getElementById("play-btn")
-          .innerText = globalThis.musicPlaying ? "Pause" : "Play ";
+          .innerText = globalThis.musicPlaying ? "Stop" : "Play";
         doc.getElementById("radioplayer")[
           globalThis.musicPlaying ? "play" : "pause"
         ]();
@@ -119,6 +119,8 @@ export async function main(ns) {
     React.createElement("style", { type: "text/css" }, `
       .marquee {
         display: flex;
+        font-family: ${ns.ui.getStyles()["fontFamily"]};
+        font-size: ${ns.ui.getStyles()["tailFontSize"]}px;
         width: 500px;
         overflow: hidden;
       }
