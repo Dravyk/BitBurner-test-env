@@ -24,12 +24,12 @@ globalThis.musicMute = false;
 export async function main(ns) {
   ns.disableLog("ALL");
   ns.ui.openTail();
-  ns.ui.resizeTail(500, 100);
+  ns.ui.resizeTail(451, 75);
 
   const doc = globalThis["document"];
 
   const createButton = (id, text, onClick) => {
-    return React.createElement('a', { id: id, onClick: onClick }, text);
+    return React.createElement("button", { class: `button ${id}`, id: id, onClick: onClick }, text);
   }
 
   globalThis.tailWin = Array.prototype.slice.call(doc
@@ -37,63 +37,82 @@ export async function main(ns) {
     .filter((el) => el.textContent.trim() === ns.getScriptName())[0];
 
   ns.printRaw(React.createElement("div", { id: "radio" },
-    React.createElement("font",
-      { color: `${ns.ui.getTheme()["cha"]}` },
-      React.createElement("span", { class: "controls" },
-        createButton("play-btn", " [play]", () => {
-          globalThis.musicPlaying = !globalThis.musicPlaying;
-          doc.getElementById("play-btn")
-            .innerText = ` [${globalThis.musicPlaying ? "pause" : "play"}]`;
-          doc.getElementById("radioplayer")[
-            globalThis.musicPlaying ? "play" : "pause"
-          ]();
-        }),
-        createButton("vol-u-btn", " [vol up]", () => {
-          const rPlayer = doc.getElementById("radioplayer");
-          if (rPlayer.volume < 1) rPlayer.volume += 0.1;
-        }),
-        createButton("vol-d-btn", " [vol down]", () => {
-          const rPlayer = doc.getElementById("radioplayer");
-          if (rPlayer.volume > 0) rPlayer.volume -= 0.1;
-        }),
-        createButton("mute-btn", " [mute]", () => {
-          globalThis.musicMute = !globalThis.musicMute;
-          doc.getElementById("mute-btn")
-            .innerText = ` [${globalThis.musicMute ? "unmute" : "mute"}]`;
-          doc.getElementById("radioplayer").muted = globalThis.musicMute;
-        }),
-        createButton("prev-btn", " [prev]", () => {
-          globalThis.musicSource = (--globalThis.musicSource
-            + globalThis.STATIONS.length)
-            % globalThis.STATIONS.length;
-          doc.getElementById("radioplayer").src = globalThis.STATIONS[
-            globalThis.musicSource
-          ][1];
-          doc.getElementById("radioplayer")[
-            globalThis.musicPlaying ? "play" : "pause"
-          ]();
-          doc.getElementById("musicTitle").innerText = ' ' + globalThis.STATIONS[
-            globalThis.musicSource
-          ][0];
-        }),
-        createButton("next-btn", " [next]", () => {
-          globalThis.musicSource = ++globalThis.musicSource
-            % globalThis.STATIONS.length;
-          doc.getElementById("radioplayer").src = globalThis.STATIONS[
-            globalThis.musicSource
-          ][1];
-          doc.getElementById("radioplayer")[
-            globalThis.musicPlaying ? "play" : "pause"
-          ]();
-          doc.getElementById("musicTitle").innerText = ' ' + globalThis.STATIONS[
-            globalThis.musicSource
-          ][0];
-        }),
-      ),
-      React.createElement("audio", {
-        id: "radioplayer", src: `${globalThis.STATIONS[0][1]}`
+    React.createElement("style", { type: "text/css" }, `
+      .button {
+        background-color: ${ns.ui.getTheme()["button"]};
+        border: 1px solid ${ns.ui.getTheme()["well"]};
+        color: ${ns.ui.getTheme()["primary"]};
+        padding: 8.5px 14px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-family: ${ns.ui.getStyles()["fontFamily"]};
+        font-size: 12px;
+        margin: 4px 2px;
+        transition-duration: 0.25s;
+        cursor: pointer;
+      }
+      .button:active {
+        border: 1px solid ${ns.ui.getTheme()["cha"]};
+      }
+      .button:hover {
+        background-color: ${ns.ui.getTheme()["backgroundsecondary"]}; 
+      }
+    `),
+    React.createElement("span", { class: "controls" },
+      createButton("play-btn", "Play ", () => {
+        globalThis.musicPlaying = !globalThis.musicPlaying;
+        doc.getElementById("play-btn")
+          .innerText = globalThis.musicPlaying ? "Pause" : "Play ";
+        doc.getElementById("radioplayer")[
+          globalThis.musicPlaying ? "play" : "pause"
+        ]();
+      }),
+      createButton("vol-u-btn", "Vol Up", () => {
+        const rPlayer = doc.getElementById("radioplayer");
+        if (rPlayer.volume < 1) rPlayer.volume += 0.1;
+      }),
+      createButton("vol-d-btn", "Vol Down", () => {
+        const rPlayer = doc.getElementById("radioplayer");
+        if (rPlayer.volume > 0) rPlayer.volume -= 0.1;
+      }),
+      createButton("mute-btn", " Mute ", () => {
+        globalThis.musicMute = !globalThis.musicMute;
+        doc.getElementById("mute-btn")
+          .innerText = globalThis.musicMute ? "Unmute" : " Mute ";
+        doc.getElementById("radioplayer").muted = globalThis.musicMute;
+      }),
+      createButton("prev-btn", "Prev", () => {
+        globalThis.musicSource = (--globalThis.musicSource
+          + globalThis.STATIONS.length)
+          % globalThis.STATIONS.length;
+        doc.getElementById("radioplayer").src = globalThis.STATIONS[
+          globalThis.musicSource
+        ][1];
+        doc.getElementById("radioplayer")[
+          globalThis.musicPlaying ? "play" : "pause"
+        ]();
+        doc.getElementById("musicTitle").innerText = ' ' + globalThis.STATIONS[
+          globalThis.musicSource
+        ][0];
+      }),
+      createButton("next-btn", "Next", () => {
+        globalThis.musicSource = ++globalThis.musicSource
+          % globalThis.STATIONS.length;
+        doc.getElementById("radioplayer").src = globalThis.STATIONS[
+          globalThis.musicSource
+        ][1];
+        doc.getElementById("radioplayer")[
+          globalThis.musicPlaying ? "play" : "pause"
+        ]();
+        doc.getElementById("musicTitle").innerText = ' ' + globalThis.STATIONS[
+          globalThis.musicSource
+        ][0];
       }),
     ),
+    React.createElement("audio", {
+      id: "radioplayer", src: `${globalThis.STATIONS[0][1]}`
+    }),
   ));
 
   ns.ui.setTailTitle(React.createElement("div", { id: "title" },
