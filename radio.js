@@ -24,7 +24,8 @@ globalThis.musicMute = false;
 export async function main(ns) {
   ns.disableLog("ALL");
   ns.ui.openTail();
-  ns.ui.resizeTail(407, 73);
+  ns.ui.resizeTail(415, 74); // steam: 407, 73 mozilla: 415, 74
+  console.clear();
 
   const doc = globalThis["document"];
 
@@ -111,7 +112,32 @@ export async function main(ns) {
       }),
     ),
     React.createElement("audio", {
-      id: "radioplayer", src: `${globalThis.STATIONS[0][1]}`
+      id: "radioplayer", src: `${globalThis.STATIONS[0][1]}`,
+      onAbort: () => {
+        console.log("Media Aborted:");
+      },
+      onEmptied: () => {
+        console.log("Media Emptied:");
+      },
+      onEnded: () => {
+        console.log("Media Ended:");
+       },
+      onError: (error) => {
+        console.log("Media Error:");
+        console.error(error);
+      },
+      onLoadedMetadata: () => {
+        console.log("Metadata Loaded:");
+      },
+      onStalled: () => {
+        console.log("Media Stalled:");
+      },
+      onSuspend: () => {
+        console.log("Media Suspended:");
+      },
+      onWaiting: () => {
+        console.log("Media Waiting:");
+      },
     }),
   ));
 
@@ -144,5 +170,5 @@ export async function main(ns) {
   ));
 
   await ns.asleep(200);
-  doc.getElementById("radioplayer").volume = 0.1;
+  doc.getElementById("radioplayer").volume = 0.2;
 }
