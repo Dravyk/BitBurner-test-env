@@ -20,18 +20,39 @@ globalThis.musicSource = 0;
 globalThis.musicPlaying = false;
 globalThis.musicMute = false;
 
+const NetworkStates = {
+  NETWORK_EMPTY: 0,     // Not yet initialized
+  NETWORK_IDLE: 1,      // Resource active, but is not using the network
+  NETWORK_LOADING: 2,   // Browser downloading data
+  NETWORK_NO_SOURCE: 3, // No source found
+};
+const ReadyStates = {
+  HAVE_NOTHING: 0,      // No information
+  HAVE_METADATA: 1,     // Metadata loaded
+  HAVE_CURRENT_DATA: 2, // Data is available, but not enough to play next frame
+  HAVE_FUTURE_DATA: 3,  // Data for current and at least next frame available
+  HAVE_ENOUGH_DATA: 4,  // Enough data available to start playing
+};
+
 /** @param {NS} ns */
 export async function main(ns) {
   ns.disableLog("ALL");
   ns.ui.openTail();
-  ns.ui.resizeTail(415, 74); // steam: 407, 73 mozilla: 415, 74
+  ns.ui.resizeTail(470, 79); // steam: 470, 79 mozilla: 415, 74
   console.clear();
 
   const doc = globalThis["document"];
 
   const createButton = (id, text, onClick) => {
-    return React.createElement("button", { class: `button ${id}`, id: id, onClick: onClick }, text);
+    return React.createElement("button", { className: `btn ${id}`, id: id, onClick: onClick }, text);
   }
+  const setStation = () => {
+    const rPlayer = doc.getElementById("radioplayer");
+    rPlayer.src = globalThis.STATIONS[globalThis.musicSource][1];
+    rPlayer[globalThis.musicPlaying ? "play" : "pause"]();
+    doc.getElementById("music-title")
+      .innerText = ' ' + globalThis.STATIONS[globalThis.musicSource][0].trim();
+  };
 
   globalThis.tailWin = Array.prototype.slice.call(doc
     .getElementsByTagName("h6"))
@@ -39,95 +60,70 @@ export async function main(ns) {
 
   ns.printRaw(React.createElement("div", { id: "radio" },
     React.createElement("style", { type: "text/css" }, `
-      .button {
+      .btn {
         background-color: ${ns.ui.getTheme()["button"]};
         border: 1px solid ${ns.ui.getTheme()["well"]};
-        color: ${ns.ui.getTheme()["primary"]};
+        color: ${ns.ui.getTheme()["cha"]};
         padding: 8.5px 14px;
         text-align: center;
         text-decoration: none;
         display: inline-block;
         font-family: ${ns.ui.getStyles()["fontFamily"]};
-        font-size: 10.5px;
+        font-size: ${ns.ui.getStyles()["tailFontSize" - 1.5]}px;
         margin: 4px 2px;
         transition-duration: 0.25s;
         cursor: pointer;
       }
-      .button:active {
+      .btn:active {
         border: 1px solid ${ns.ui.getTheme()["cha"]};
       }
-      .button:hover {
+      .btn:hover {
         background-color: ${ns.ui.getTheme()["backgroundsecondary"]}; 
       }
     `),
-    React.createElement("span", { class: "controls" },
-      createButton("play-btn", "Play", () => {
+    React.createElement("span", { className: "controls" },
+      createButton("play-btn", "Play", (e) => {
         globalThis.musicPlaying = !globalThis.musicPlaying;
-        doc.getElementById("play-btn")
-          .innerText = globalThis.musicPlaying ? "Stop" : "Play";
+        e.currentTarget.innerText = globalThis.musicPlaying ? "Stop" : "Play";
         doc.getElementById("radioplayer")[
           globalThis.musicPlaying ? "play" : "pause"
         ]();
       }),
       createButton("vol-u-btn", "Vol Up", () => {
         const rPlayer = doc.getElementById("radioplayer");
-        if (rPlayer.volume < 1) rPlayer.volume += 0.1;
+        if (rPlayer.volume <= 0.95) rPlayer.volume += 0.05;
       }),
       createButton("vol-d-btn", "Vol Down", () => {
         const rPlayer = doc.getElementById("radioplayer");
-        if (rPlayer.volume > 0) rPlayer.volume -= 0.1;
+        if (rPlayer.volume >= 0.05) rPlayer.volume -= 0.05;
       }),
-      createButton("mute-btn", " Mute ", () => {
+      createButton("mute-btn", " Mute ", (e) => {
         globalThis.musicMute = !globalThis.musicMute;
-        doc.getElementById("mute-btn")
-          .innerText = globalThis.musicMute ? "Unmute" : " Mute ";
+        e.currentTarget.innerText = globalThis.musicMute ? "Unmute" : " Mute ";
         doc.getElementById("radioplayer").muted = globalThis.musicMute;
       }),
       createButton("prev-btn", "Prev", () => {
         globalThis.musicSource = (--globalThis.musicSource
           + globalThis.STATIONS.length)
           % globalThis.STATIONS.length;
-        doc.getElementById("radioplayer").src = globalThis.STATIONS[
-          globalThis.musicSource
-        ][1];
-        doc.getElementById("radioplayer")[
-          globalThis.musicPlaying ? "play" : "pause"
-        ]();
-        doc.getElementById("musicTitle").innerText = ' ' + globalThis.STATIONS[
-          globalThis.musicSource
-        ][0];
+        setStation();
       }),
       createButton("next-btn", "Next", () => {
         globalThis.musicSource = ++globalThis.musicSource
           % globalThis.STATIONS.length;
-        doc.getElementById("radioplayer").src = globalThis.STATIONS[
-          globalThis.musicSource
-        ][1];
-        doc.getElementById("radioplayer")[
-          globalThis.musicPlaying ? "play" : "pause"
-        ]();
-        doc.getElementById("musicTitle").innerText = ' ' + globalThis.STATIONS[
-          globalThis.musicSource
-        ][0];
+        setStation();
       }),
     ),
     React.createElement("audio", {
-      id: "radioplayer", src: `${globalThis.STATIONS[0][1]}`,
+      id: "radioplayer", preload: "none", src: `${globalThis.STATIONS[0][1]}`,
       onAbort: () => {
         console.log("Media Aborted:");
       },
-      onEmptied: () => {
-        console.log("Media Emptied:");
-      },
       onEnded: () => {
         console.log("Media Ended:");
-       },
-      onError: (error) => {
-        console.log("Media Error:");
-        console.error(error);
       },
-      onLoadedMetadata: () => {
-        console.log("Metadata Loaded:");
+      onError: () => {
+        console.log("Media Error:");
       },
       onStalled: () => {
         console.log("Media Stalled:");
@@ -136,7 +132,7 @@ export async function main(ns) {
         console.log("Media Suspended:");
       },
       onWaiting: () => {
-        console.log("Media Waiting:");
+        console.log("Media Buffering:");
       },
     }),
   ));
@@ -144,6 +140,7 @@ export async function main(ns) {
   ns.ui.setTailTitle(React.createElement("div", { id: "title" },
     React.createElement("style", { type: "text/css" }, `
       .marquee {
+        color: ${ns.ui.getTheme()["cha"]};
         display: flex;
         font-family: ${ns.ui.getStyles()["fontFamily"]};
         font-size: ${ns.ui.getStyles()["tailFontSize"]}px;
@@ -155,17 +152,14 @@ export async function main(ns) {
         animation: marquee 10s linear infinite;
       }
       @keyframes marquee {
-        0% { transform: translate(700%, 0); }
+        0% { transform: translate(500%, 0); }
         100% { transform: translate(-100%, 0); }
       }`
     ),
-    React.createElement("font",
-      { color: `${ns.ui.getTheme()["cha"]}` },
-      React.createElement("span", { class: "marquee" },
-        React.createElement("a", {
-          id: "musicTitle", class: "MuiTypography-root MuiTypography-body1"
-        }, ` ${globalThis.STATIONS[0][0].trim()}`),
-      ),
+    React.createElement("span", { className: "marquee" },
+      React.createElement("a", {
+        id: "music-title", className: "MuiTypography-root MuiTypography-body1"
+      }, ` ${globalThis.STATIONS[0][0].trim()}`),
     ),
   ));
 
