@@ -9,81 +9,81 @@ export async function main(ns) {
   globalThis.state = false;
 
   const bbStyle = React.createElement("style", { type: "text/css" }, `
+:root {
+  --clickX: 0;
+  --clickY: 0;
+}
 .btn {
   background-color: ${ns.ui.getTheme()["button"]};
   border: 1px solid ${ns.ui.getTheme()["well"]};
   color: ${ns.ui.getTheme()["primary"]};
   padding: 8.5px 14px;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
   font-family: ${ns.ui.getStyles()["fontFamily"]};
   font-size: ${ns.ui.getStyles()["tailFontSize" - 1.5]}px;
   margin: 4px 2px;
   transition-duration: 0.25s;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.btn span {
+  position: absolute;
+  border-radius: 50%;
+  background-color: ${ns.ui.getTheme()["primary"]};
+
+  width: 100px;
+  height: 100px;
+  margin-top: -50px;
+  margin-left: -50px;
+
+  animation: ripple 1s;
+  opacity: 0;
 }
 .btn:active {
-  border: 1px solid ${ns.ui.getTheme()["int"]};
+  border: 1px solid ${ns.ui.getTheme()["cha"]};
 }
 .btn:hover {
   background-color: ${ns.ui.getTheme()["backgroundsecondary"]}; 
+}
+@keyframes ripple {
+  from {
+    opacity: 1;
+    transform: scale(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(10);
+  }
 }`
   );
 
-  const rippleStyle = React.createElement("style", { type: "text/css" }, `
-:root {
-  --clickX: 0;
-  --clickY: 0;
-}
-.ripple {
-  border: none;
-  border-radius: 2px;
-  padding: 12px 18px;
-  font-size: 16px;
-  cursor: pointer;
-  color: white;
-  background-color: #2196f3;
-  box-shadow: 0 0 4px #999;
-  outline: none;
-
-  background-position: center;
-  transition: background 0.8s;
-}
-.ripple:hover {
-  background: #47a7f5 radial-gradient(circle at 50% 50%, transparent 1%, #47a7f5 1%) center/15000%;
-}
-.ripple:active {
-  background-color: #6eb9f7;
-  background-size: 100%;
-  transition: background 0s;
-}`
-  );
-
-  ns.printRaw(React.createElement("div", {},
-    React.createElement("span", {}, rippleStyle,
+  ns.printRaw(React.createElement("div", {}, bbStyle,
+    React.createElement("span", {},
       React.createElement("button", {
-        className: "ripple", onClick: (e) => {
-          const [x, y] = [e.clientX, e.clientY];
+        class: "btn", id: "btn-test", onClick: (e) => {
           console.clear();
-          //doc.getElementById("btn-test1").innerText = `${target}, ${x}, ${y}`;
-
-          //console.log(e);
-          const style = doc.documentElement.style;
-          style.setProperty("--clickX", x);
-          style.setProperty("--clickY", y);
-          console.log(`client(x, y):(${x}, ${y})\nclick(x, y):(${style.getPropertyValue("--clickX")}, ${style.getPropertyValue("--clickY")})`)
+          console.log(e);
+          // Create span element
+          let ripple = doc.createElement("span");
+          // Add ripple class to span
+          ripple.classList.add("ripple");
+          // Add span to the button
+          e.currentTarget.appendChild(ripple);
+          // Get position of X
+          const x = e.clientX - e.currentTarget.offsetLeft;
+          // Get position of Y
+          const y = e.clientY - e.currentTarget.offsetTop;
+          // Position the span element
+          ripple.style.left = `${x}px`;
+          ripple.style.top = `${y}px`;
+          // Remove span after 0.3s
+          setTimeout(() => {
+            ripple.remove();
+          }, 300);
+          // Test code
+          e.currentTarget.innerText = `${x}, ${y}`;
         }
-      }, "Ripple"),
-    ),
-    React.createElement("span", {}, bbStyle,
-      React.createElement("button", {
-        className: "btn", id: "btn-test1", onClick: () => {
-          globalThis.state = !globalThis.state;
-          doc.getElementById("btn-test1").innerText = globalThis.state ? "Stop" : "Play";
-        }
-      }, "Play")),
+      },
+        "Test")),
   ));
 }
-
-// https://css-tricks.com/how-to-recreate-the-ripple-effect-of-material-design-buttons/
