@@ -38,14 +38,18 @@ const ReadyStates = {
 export async function main(ns) {
   ns.disableLog("ALL");
   ns.ui.openTail();
-  ns.ui.resizeTail(470, 79); // steam: 470, 79 mozilla: 415, 74
+  ns.ui.resizeTail(470, 79); // steam: 461, 77; mozilla: 470, 79
   console.clear();
 
   const doc = globalThis["document"];
+  globalThis.tailWin = Array.prototype.slice.call(doc
+    .getElementsByTagName("h6"))
+    .filter((el) => el.textContent.trim() === ns.getScriptName())[0];
 
   const createButton = (id, text, onClick) => {
     return React.createElement("button", { className: `btn ${id}`, id: id, onClick: onClick }, text);
   }
+
   const setStation = () => {
     const rPlayer = doc.getElementById("radioplayer");
     rPlayer.src = globalThis.STATIONS[globalThis.musicSource][1];
@@ -53,10 +57,6 @@ export async function main(ns) {
     doc.getElementById("music-title")
       .innerText = ' ' + globalThis.STATIONS[globalThis.musicSource][0].trim();
   };
-
-  globalThis.tailWin = Array.prototype.slice.call(doc
-    .getElementsByTagName("h6"))
-    .filter((el) => el.textContent.trim() === ns.getScriptName())[0];
 
   ns.printRaw(React.createElement("div", { id: "radio" },
     React.createElement("style", { type: "text/css" }, `
@@ -164,5 +164,5 @@ export async function main(ns) {
   ));
 
   await ns.asleep(200);
-  doc.getElementById("radioplayer").volume = 0.2;
+  doc.getElementById("radioplayer").volume = 0.1;
 }
