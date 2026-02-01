@@ -130,6 +130,12 @@ Connected: ${details.isConnectedToCurrentServer}`
       if (!ret) authFail(hostname);
       return ret;
     }
+    case "KingOfTheHill": {
+      // TODO: Ascend the highest mountain!
+      const ret = false;
+      //if (!ret) authFail(hostname);
+      return ret;
+    }
     case "Laika4": {
       // Dog names for password
       const ret = await authenticateWithDogNames(
@@ -170,14 +176,14 @@ Connected: ${details.isConnectedToCurrentServer}`
     }*/
     case "PHP 5.4": {
       // TODO: Sorted password is in data
-      const ret = authenticateUnsortFromData(ns, hostname, details.data);
+      const ret = authenticateUnsortFromData(ns, hostname, details);
       if (!ret) authFail(hostname);
       return ret;
     }
     case "Pr0verFl0": {
-      // TODO: ?
-      const ret = false;
-      //if (!ret) authFail(hostname);
+      // TODO: Overflow password by 2xlength
+      const ret = authenticatePasswordOverflow(ns, hostname, details.passwordLength);
+      if (!ret) authFail(hostname);
       return ret;
     }
     /*case "PrimeTime 2": {
@@ -210,6 +216,12 @@ Connected: ${details.isConnectedToCurrentServer}`
       //if (!ret) authFail(hostname);
       return ret;
     }*/
+    case "(The Labyrinth)": {
+      // TODO: X marks the spot; there are 7 labs
+      const ret = ns.dnet.authenticate(hostname, "!!the:masterwork:of:daedalus<5999>!!");
+      if (!ret) authFail(hostname);
+      return ret;
+    }
     default:
       ns.tprint(`
 
@@ -282,7 +294,6 @@ const authenticateWithDefaultPassword = async (ns, hostname, details) => {
 const authenticateWithDogNames = async (ns, hostname, passwordLength) => {
   const passwords = ["max", "fido", "spot", "rover"]
     .filter((p) => p.length === passwordLength);
-  console.log(`Laika: ${passwords}`)
   const result = await authenticate(ns, hostname, passwords);
   return result.success;
 };
@@ -308,47 +319,75 @@ const authenticateParseFromData = async (ns, hostname, data) => {
  * Authenticates on 'PHP_5.4' type servers.
  * @param {NS} ns
  * @param {string} hostname the name of the server to attempt to authorize on.
- * @param {string} data the data to parse numbers from.
+ * @param {ServerAuthDetails & {isOnline: boolean} details
+ *   the details of the server.
  */
-const authenticateUnsortFromData = async (ns, hostname, data) => {
-  const passwords = [
-    data[0] + data[1] + data[2],
-    data[0] + data[2] + data[1],
-    data[1] + data[2] + data[0],
-    data[1] + data[0] + data[2],
-    data[2] + data[0] + data[1],
-    data[2] + data[1] + data[0],
-  ];
-  /* number of passwords = factorial(numbers.length)
-      0,1,2,3
-      0,1,3,2
-      0,2,3,1
-      0,2,1,3
-      0,3,1,2
-      0,3,2,1
-  
-      1,3,2,0
-      1,3,0,2
-      1,2,0,3
-      1,2,3,0
-      1,0,3,2
-      1,0,2,3
-  
-      2,0,1,3
-      2,0,3,1
-      2,1,3,0
-      2,1,0,3
-      2,3,0,1
-      2,3,1,0
-  
-      3,0,2,1
-      3,0,1,2
-      3,2,1,0
-      3,2,0,1
-      3,1,0,2
-      3,1,2,0
-  */
+const authenticateUnsortFromData = async (ns, hostname, details) => {
+  const data = details.data;
+  let passwords = [];
+  switch (details.passwordLength) {
+    case 2:
+      passwords = [
+        data[0] + data[1],
+        data[1] + data[0],
+      ];
+      break;
+    case 3:
+      passwords = [
+        data[0] + data[1] + data[2],
+        data[0] + data[2] + data[1],
+        data[1] + data[2] + data[0],
+        data[1] + data[0] + data[2],
+        data[2] + data[0] + data[1],
+        data[2] + data[1] + data[0],
+      ];
+      break;
+    default:
+      return false;
+    /* number of passwords = factorial(numbers.length)
+        0,1,2,3
+        0,1,3,2
+        0,2,3,1
+        0,2,1,3
+        0,3,1,2
+        0,3,2,1
+    
+        1,3,2,0
+        1,3,0,2
+        1,2,0,3
+        1,2,3,0
+        1,0,3,2
+        1,0,2,3
+    
+        2,0,1,3
+        2,0,3,1
+        2,1,3,0
+        2,1,0,3
+        2,3,0,1
+        2,3,1,0
+    
+        3,0,2,1
+        3,0,1,2
+        3,2,1,0
+        3,2,0,1
+        3,1,0,2
+        3,1,2,0
+    */
+  }
   const result = await authenticate(ns, hostname, passwords);
+  return result.success;
+};
+
+/**
+ * Authenticates on 'Pr0verFl0' type servers.
+ * @param {NS} ns
+ * @param {string} hostname the name of the server to attempt to authorize on.
+ * @param {number} length of the password buffer.
+ */
+const authenticatePasswordOverflow = async (ns, hostname, length) => {
+  //await authenticateWithNoPassword(ns, hostname);
+  const password = "11".repeat(length);
+  const result = await ns.dnet.authenticate(hostname, password);
   return result.success;
 };
 
