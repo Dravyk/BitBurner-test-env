@@ -1,4 +1,7 @@
 globalThis.STATIONS = [
+  ["Trance Technic", "http://s11.ssl-stream.com:8034/;"],
+  ["Powertrance One", "https://stream.laut.fm/powertrance-one"],
+  ["Powertrance Two", "https://stream.laut.fm/powertrance-two"],
   //["Cool FM - Trance Elektro", "https://mediagw.e-tiger.net/stream/zc14"],
   ["96.5 WKLH", "https://live.amperwave.net/direct/saga-wklhfmmp3-ibc2"],
   ["Chillsynth", "https://stream.nightride.fm/chillsynth.m4a"],
