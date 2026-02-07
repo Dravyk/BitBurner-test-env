@@ -71,17 +71,18 @@ Connected: ${details.isConnectedToCurrentServer}`
 
   switch (details.modelId) {
     case "110100100": {
-      // TODO: 420, weed related?
+      // TODO: Convert binary to ASCII in data
+      const ret = await authenticateBinary2Ascii(ns, hostname, details.data);
+      //if (!ret) authFail(hostname);
+      return ret;
+    }
+    case "2G_cellular": {
+      // TODO: I spent a while on it, but that's not right
+      //       I thought about it for some time, but that is not the password
       const ret = false;
       //if (!ret) authFail(hostname);
       return ret;
     }
-    /*case "2G_cellular": {
-      // TODO: ?
-      const ret = false;
-      //if (!ret) authFail(hostname);
-      return ret;
-    }*/
     case "AccountsManager_4.2": {
       // Password range in hint
       const ret = await authenticateParseRangeFromHint(ns, hostname, details);
@@ -89,9 +90,15 @@ Connected: ${details.isConnectedToCurrentServer}`
       return ret;
     }
     case "BellaCuore": {
-      // Convert roman numerals
+      // Convert roman numerals or TODO: password in given range of roman numerals
       const ret = await authenticateWithRomanNumerals(ns, hostname, details.data);
       if (!ret) authFail(hostname);
+      return ret;
+    }
+    case "BigMo%od": {
+      // TODO: (password % n) % (n % 32)
+      const ret = false;
+      //if (!ret) authFail(hostname);
       return ret;
     }
     case "CloudBlare(tm)": {
@@ -112,12 +119,12 @@ Connected: ${details.isConnectedToCurrentServer}`
       if (!ret) authFail(hostname);
       return ret;
     }
-    /*case "EuroZone Free": {
-      // TODO: ?
+    case "EuroZone Free": {
+      // TODO: My favorite EU country
       const ret = false;
       //if (!ret) authFail(hostname);
       return ret;
-    }*/
+    }
     case "Factori-Os": {
       // TODO: Is divisible by ?
       const ret = false;
@@ -138,18 +145,16 @@ Connected: ${details.isConnectedToCurrentServer}`
     }
     case "Laika4": {
       // Dog names for password
-      const ret = await authenticateWithDogNames(
-        ns, hostname, details.passwordLength
-      );
+      const ret = await authenticateWithDogNames(ns, hostname, details.passwordLength);
       if (!ret) authFail(hostname);
       return ret;
     }
-    /*case "MathML": {
-      // TODO: ?
+    case "MathML": {
+      // TODO: The password is the evaluation of the expression in data
       const ret = false;
       //if (!ret) authFail(hostname);
       return ret;
-    }*/
+    }
     case "NIL": {
       // TODO: yes, yesn't in data
       const ret = false;
@@ -168,42 +173,42 @@ Connected: ${details.isConnectedToCurrentServer}`
       if (!ret) authFail(hostname);
       return ret;
     }
-    /*case "OrdoXenos": {
-      // TODO: ?
+    case "OrdoXenos": {
+      // TODO: XOR mask encrypted password with mask in data
       const ret = false;
       //if (!ret) authFail(hostname);
       return ret;
-    }*/
+    }
     case "PHP 5.4": {
       // TODO: Sorted password is in data
-      const ret = authenticateUnsortFromData(ns, hostname, details);
+      const ret = await authenticateUnsortFromData(ns, hostname, details);
       if (!ret) authFail(hostname);
       return ret;
     }
     case "Pr0verFl0": {
-      // TODO: Overflow password by 2xlength
-      const ret = authenticatePasswordOverflow(ns, hostname, details.passwordLength);
+      // Overflow password by 2x length
+      const ret = await authenticatePasswordOverflow(ns, hostname, details.passwordLength);
       if (!ret) authFail(hostname);
       return ret;
     }
-    /*case "PrimeTime 2": {
-      // TODO: ?
-      const ret = false;
-      //if (!ret) authFail(hostname);
+    case "PrimeTime 2": {
+      // The password is the largest prime factor of number in details.data
+      const ret = await authenticateWithHighestPrime(ns, hostname, details.data);
+      if (!ret) authFail(hostname);
       return ret;
-    }*/
+    }
     case "RateMyPix.Auth": {
       // TODO: 🌶️🌶️🌶️🌶️🌶️ Make it spicy!
       const ret = false;
       //if (!ret) authFail(hostname);
       return ret;
     }
-    /*case "TopPass": {
-      // TODO: ?
+    case "TopPass": {
+      // TODO: It's a common password
       const ret = false;
       //if (!ret) authFail(hostname);
       return ret;
-    }*/
+    }
     case "ZeroLogon": {
       // No password
       const ret = await authenticateWithNoPassword(ns, hostname);
@@ -218,14 +223,21 @@ Connected: ${details.isConnectedToCurrentServer}`
     }*/
     case "(The Labyrinth)": {
       // TODO: X marks the spot; there are 7 labs
-      const ret = ns.dnet.authenticate(hostname, "!!the:masterwork:of:daedalus<5999>!!");
+      // "!!the:masterwork:of:daedalus<5999>!!"
+      // "!!the:masterwork:of:daedalus<6293>!!"
+      const nums = 6293;
+      const ret = await ns.dnet.authenticate(hostname, `!!the:masterwork:of:daedalus<${nums}>!!`);
       if (!ret) authFail(hostname);
       return ret;
     }
     default:
       ns.tprint(`
 
-Unhandled Model: ${details.modelId}`
+Unhandled Model: ${details.modelId}
+Format: ${details.passwordFormat}
+Length: ${details.passwordLength}
+Hint: ${details.passwordHint}
+Data: ${details.data}`
       );
       return false;
   }
@@ -323,9 +335,14 @@ const authenticateParseFromData = async (ns, hostname, data) => {
  *   the details of the server.
  */
 const authenticateUnsortFromData = async (ns, hostname, details) => {
+  // number of passwords = factorial(numbers.length)
   const data = details.data;
   let passwords = [];
   switch (details.passwordLength) {
+    case 1:
+      passwords = [
+        data[0]
+      ];
     case 2:
       passwords = [
         data[0] + data[1],
@@ -342,37 +359,41 @@ const authenticateUnsortFromData = async (ns, hostname, details) => {
         data[2] + data[1] + data[0],
       ];
       break;
+    case 4:
+      passwords = [
+        data[0] + data[1] + data[2] + data[3],
+        data[0] + data[1] + data[3] + data[2],
+        data[0] + data[2] + data[3] + data[1],
+        data[0] + data[2] + data[1] + data[3],
+        data[0] + data[3] + data[1] + data[2],
+        data[0] + data[3] + data[2] + data[1],
+        data[1] + data[3] + data[2] + data[0],
+        data[1] + data[3] + data[0] + data[2],
+        data[1] + data[2] + data[0] + data[3],
+        data[1] + data[2] + data[3] + data[0],
+        data[1] + data[0] + data[3] + data[2],
+        data[1] + data[0] + data[2] + data[3],
+        data[2] + data[0] + data[1] + data[3],
+        data[2] + data[0] + data[3] + data[1],
+        data[2] + data[1] + data[3] + data[0],
+        data[2] + data[1] + data[0] + data[3],
+        data[2] + data[3] + data[0] + data[1],
+        data[2] + data[3] + data[1] + data[0],
+        data[3] + data[0] + data[2] + data[1],
+        data[3] + data[0] + data[1] + data[2],
+        data[3] + data[2] + data[1] + data[0],
+        data[3] + data[2] + data[0] + data[1],
+        data[3] + data[1] + data[0] + data[2],
+        data[3] + data[1] + data[2] + data[0],
+      ];
+      break;
     default:
+      ns.tprint(`
+
+No solver for model: ${details.modelId}
+Length: ${details.passwordLength}`
+      );
       return false;
-    /* number of passwords = factorial(numbers.length)
-        0,1,2,3
-        0,1,3,2
-        0,2,3,1
-        0,2,1,3
-        0,3,1,2
-        0,3,2,1
-    
-        1,3,2,0
-        1,3,0,2
-        1,2,0,3
-        1,2,3,0
-        1,0,3,2
-        1,0,2,3
-    
-        2,0,1,3
-        2,0,3,1
-        2,1,3,0
-        2,1,0,3
-        2,3,0,1
-        2,3,1,0
-    
-        3,0,2,1
-        3,0,1,2
-        3,2,1,0
-        3,2,0,1
-        3,1,0,2
-        3,1,2,0
-    */
   }
   const result = await authenticate(ns, hostname, passwords);
   return result.success;
@@ -395,10 +416,11 @@ const authenticatePasswordOverflow = async (ns, hostname, length) => {
  * Authenticates on 'BellaCuore' type servers.
  * @param {NS} ns
  * @param {string} hostname the name of the server to attempt to authorize on.
- * @param {ServerAuthDetails} data the details.data of the server.
+ * @param {string} data the details.data of the server.
  */
 const authenticateWithRomanNumerals = async (ns, hostname, data) => {
   const roman = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+  const rets = { "nulla": "0", "PARUM BREVIS": "Very Short", "ALTUS NIMIS": "Too High" };
   let password = 0;
   for (let i = 0; i < data.length; ++i) {
     if (i === data.length - 1 || (roman[data[i]] >= roman[data[i + 1]])) {
@@ -416,16 +438,12 @@ const authenticateWithRomanNumerals = async (ns, hostname, data) => {
  * Authenticates on 'OctantVoxel' type servers.
  * @param {NS} ns
  * @param {string} hostname the name of the server to attempt to authorize on.
- * @param {ServerAuthDetails} data the details.data of the server.
+ * @param {string} data the details.data of the server.
  */
 const authenticateWithBaseConversion = async (ns, hostname, data) => {
   const [base, value] = data.split(',');
-  let password = 0;
-  for (let i = 0, j = value.length - 1; i < value.length; ++i, --j) {
-    const char = value.charCodeAt(j);
-    const digit = char > 64 ? char - 55 : Number(value[j]);
-    password += digit * Math.pow(Number(base), i);
-  }
+  const password = baseConvert(base, value);
+
   const result = await ns.dnet.authenticate(hostname, password);
   return result.success;
 };
@@ -478,6 +496,98 @@ const authenticateFromHeartbleed = async (ns, hostname) => {
   }
   const result = await authenticateParseFromData(ns, hostname, message[0]);
   return result.success;
+};
+
+/**
+ * Authenticates on 'PrimeTime 2' type servers.
+ * @param {NS} ns
+ * @param {string} hostname the name of the server to attempt to authorize on.
+ * @param {string} data the details.data of the server.
+ */
+const authenticateWithHighestPrime = async (ns, hostname, data) => {
+  let num = Number(data);
+  let maxPrime;
+
+  // Check for factors of 2
+  while (num % 2 === 0) {
+    maxPrime = 2;
+    num >>= 1;
+  }
+
+  // Check for factors of 3
+  while (num % 3 === 0) {
+    maxPrime = 3;
+    num /= 3;
+  }
+
+  // Check for odd factors starting from 5 and 
+  // incrementing by 6 (i and i+2)
+  for (let i = 5; i * i <= num; i += 6) {
+    while (num % i === 0) {
+      maxPrime = i;
+      num /= i;
+    }
+    while (num % (i + 2) === 0) {
+      maxPrime = i + 2;
+      num /= (i + 2);
+    }
+  }
+
+  // If num is still greater than 4, it is a 
+  // prime number
+  if (num > 4)
+    maxPrime = num;
+
+  const result = await ns.dnet.authenticate(hostname, maxPrime);
+  return result.success;
+};
+
+/**
+ * Authenticates on '110100100' type servers.
+ * @param {NS} ns
+ * @param {string} hostname the name of the server to attempt to authorize on.
+ * @param {string} data the details.data of the server.
+ */
+const authenticateBinary2Ascii = async (ns, hostname, data) => {
+  let password = "";
+  data.split(' ').forEach((bin) => { password += String.fromCharCode(baseConvert(2, bin)) });
+
+  const result = await ns.dnet.authenticate(hostname, password);
+  return result.success;
+};
+
+const baseConvert = (base, value) => {
+  let password = 0;
+  for (let i = 0, j = value.length - 1; i < value.length; ++i, --j) {
+    const char = value.charCodeAt(j);
+    const digit = char > 64 ? char - 55 : Number(value[j]);
+    password += digit * Math.pow(base, i);
+  }
+  return password;
+};
+
+const getPrimesList = (limit) => {
+  /* Mark the composites */
+  // Special case for 0 & 1
+  let mark = [-1, -1];
+  // Set k=1. Loop until k >= sqrt(n)
+  for (let k = 1, m = 0; k <= Math.sqrt(limit) + 1; k = m) {
+    // Find first non-composite in list > k
+    for (m = k + 1; m < limit; ++m) {
+      if (!mark[m]) break;
+    }
+    // Mark the non-primes
+    for (let i = m * 2; i < limit; i += m) {
+      mark[i] = -1;
+    }
+  }
+  let primeList = [];
+  // Reverse load primeList
+  for (let i = limit - 1; i > 0; --i) {
+    // All unmarked numbers are prime
+    if (!mark[i]) primeList.push(i);
+  }
+  return primeList;
 };
 
 // This lets you tab-complete putting "--tail" on the run command so you can see the script logs as it runs
