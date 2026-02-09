@@ -63,6 +63,7 @@ Model: ${details.modelId}
 Format: ${details.passwordFormat}
 Length: ${details.passwordLength}
 Hint: ${details.passwordHint}
+Data: ${details.data}
 Online: ${details.isOnline}
 Connected: ${details.isConnectedToCurrentServer}`
       );
@@ -91,7 +92,7 @@ Connected: ${details.isConnectedToCurrentServer}`
     }
     case "BellaCuore": {
       // Convert roman numerals or TODO: password in given range of roman numerals
-      const ret = await authenticateWithRomanNumerals(ns, hostname, details.data);
+      const ret = await authenticateWithRomanNumerals(ns, hostname, details);
       if (!ret) authFail(hostname);
       return ret;
     }
@@ -151,6 +152,8 @@ Connected: ${details.isConnectedToCurrentServer}`
     }
     case "MathML": {
       // TODO: The password is the evaluation of the expression in data
+      // Example: 67 * 78 + ( 97 + 77 ) / 13 / ( 62 + 59 ) + 64
+      // Example 2: 90 ➕ 48 ҳ ( 96 ҳ 47 ) ҳ 74 ҳ 66
       const ret = false;
       //if (!ret) authFail(hostname);
       return ret;
@@ -175,6 +178,9 @@ Connected: ${details.isConnectedToCurrentServer}`
     }
     case "OrdoXenos": {
       // TODO: XOR mask encrypted password with mask in data
+      // Example: _`w.;00010111 00000001 00000100 00010110
+      // test: _=01011111 ,`=01100000 ,w=01110111 ,.=00101110
+      // xored:    48 61 73 28 = Has(
       const ret = false;
       //if (!ret) authFail(hostname);
       return ret;
@@ -233,11 +239,7 @@ Connected: ${details.isConnectedToCurrentServer}`
     default:
       ns.tprint(`
 
-Unhandled Model: ${details.modelId}
-Format: ${details.passwordFormat}
-Length: ${details.passwordLength}
-Hint: ${details.passwordHint}
-Data: ${details.data}`
+Unhandled Model: ${details.modelId}`
       );
       return false;
   }
@@ -341,7 +343,7 @@ const authenticateUnsortFromData = async (ns, hostname, details) => {
   switch (details.passwordLength) {
     case 1:
       passwords = [
-        data[0]
+        data,
       ];
     case 2:
       passwords = [
@@ -416,28 +418,65 @@ const authenticatePasswordOverflow = async (ns, hostname, length) => {
  * Authenticates on 'BellaCuore' type servers.
  * @param {NS} ns
  * @param {string} hostname the name of the server to attempt to authorize on.
- * @param {string} data the details.data of the server.
+ * @param {ServerAuthDetails} details the details of the server.
  */
-const authenticateWithRomanNumerals = async (ns, hostname, data) => {
+const authenticateWithRomanNumerals = async (ns, hostname, details) => {
+  const values = details.data.split(',');
+  if (values.length === 1) {
+    // Hint: The password is the value of the number 'CCCXLIII'
+    // Data: CCCXLIII
+    const password = convertRoman(values[0]);
+    const result = await ns.dnet.authenticate(hostname, password);
+    return result.success;
+  }
+  else {
+    // Hint: The password is between 'CCC' and 'CDXXXII'
+    // Data: CCC,CDXXXII
+    // Hint: The password is between 'nulla' and 'DCCXIX'
+    // Data: nulla,DCCXIX
+    let [lowest, highest] = [convertRoman(values[0]), convertRoman(values[1])];
+    let guess = Math.round((highest - lowest) / 2);
+    let result;
+    while (true) {
+      const password = `${guess}`.padStart(details.passwordLength, '0');
+      result = await ns.dnet.authenticate(hostname, password);
+      if (result.success) break;
+      let log;
+      while (!log) {
+        log = (await ns.dnet.heartbleed(hostname)).logs[0];
+      }
+      if (log.includes("ALTUS")) {
+        highest = guess;
+        guess -= Math.round((highest - lowest) / 2);
+      }
+      else { // Higher
+        lowest = guess;
+        guess += Math.round((highest - lowest) / 2);
+      }
+    }
+    return result.success;
+  }
+};
+
+const convertRoman = (value) => {
+  if (value === "nulla") return 0;
   const roman = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
-  const rets = { "nulla": "0", "PARUM BREVIS": "Very Short", "ALTUS NIMIS": "Too High" };
-  let password = 0;
-  for (let i = 0; i < data.length; ++i) {
-    if (i === data.length - 1 || (roman[data[i]] >= roman[data[i + 1]])) {
-      password += roman[data[i]];
+  let ret = 0;
+  for (let i = 0; i < value.length; ++i) {
+    if (i === value.length - 1 || (roman[value[i]] >= roman[value[i + 1]])) {
+      ret += roman[value[i]];
     }
     else {
-      password -= roman[data[i]];
+      ret -= roman[value[i]];
     }
   }
-  const result = await ns.dnet.authenticate(hostname, password);
-  return result.success;
+  return ret;
 };
 
 /**
- * Authenticates on 'OctantVoxel' type servers.
+ * Authenticates on 'OctantVoxel' type servers 
  * @param {NS} ns
- * @param {string} hostname the name of the server to attempt to authorize on.
+ * @param {string} hostname the name of the server to attem t to authorize on.
  * @param {string} data the details.data of the server.
  */
 const authenticateWithBaseConversion = async (ns, hostname, data) => {
@@ -449,10 +488,10 @@ const authenticateWithBaseConversion = async (ns, hostname, data) => {
 };
 
 /**
- * Authenticates on 'AccountsManager_4.2' type servers.
+ * Authenticates on 'AccountsManager 4.2' type servers 
  * @param {NS} ns
- * @param {string} hostname the name of the server to attempt to authorize on.
- * @param {ServerAuthDetails} details the details of the server.
+ * @param {string} hostname the name of the server to attem t to authorize on.
+ * @param {ServerAuthDetails} details the det ils of the server.
  */
 const authenticateParseRangeFromHint = async (ns, hostname, details) => {
   let [lowest, highest] = details.passwordHint.match(/\d+/g);
@@ -479,9 +518,9 @@ const authenticateParseRangeFromHint = async (ns, hostname, details) => {
 };
 
 /**
- * Authenticates on 'OpenWebAccessPoint' type servers.
+ * Authenticates on 'OpenWebAccessP int' type servers 
  * @param {NS} ns
- * @param {string} hostname the name of the server to attempt to authorize on.
+ * @param {string} hostname the name of the server to attem t to authorize on.
  */
 const authenticateFromHeartbleed = async (ns, hostname) => {
   let message;
@@ -499,10 +538,10 @@ const authenticateFromHeartbleed = async (ns, hostname) => {
 };
 
 /**
- * Authenticates on 'PrimeTime 2' type servers.
+ * Authenticates on 'PrimeTi e 2' type servers 
  * @param {NS} ns
- * @param {string} hostname the name of the server to attempt to authorize on.
- * @param {string} data the details.data of the server.
+ * @param {string} hostname the name of the server to attem t to authorize on.
+ * @param {string} data the details. ata of the server.
  */
 const authenticateWithHighestPrime = async (ns, hostname, data) => {
   let num = Number(data);
@@ -543,10 +582,10 @@ const authenticateWithHighestPrime = async (ns, hostname, data) => {
 };
 
 /**
- * Authenticates on '110100100' type servers.
+ * Authenticates on '11010 100' type servers 
  * @param {NS} ns
- * @param {string} hostname the name of the server to attempt to authorize on.
- * @param {string} data the details.data of the server.
+ * @param {string} hostname the name of the server to attem t to authorize on.
+ * @param {string} data the details. ata of the server.
  */
 const authenticateBinary2Ascii = async (ns, hostname, data) => {
   let password = "";
@@ -557,6 +596,9 @@ const authenticateBinary2Ascii = async (ns, hostname, data) => {
 };
 
 const baseConvert = (base, value) => {
+  // TODO: convert fractional bases
+  // Hint: the password is the base 3.8 number 102320.323011 in base 10
+  // Data: 3.8,102320.323011
   let password = 0;
   for (let i = 0, j = value.length - 1; i < value.length; ++i, --j) {
     const char = value.charCodeAt(j);
