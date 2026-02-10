@@ -72,7 +72,7 @@ Connected: ${details.isConnectedToCurrentServer}`
 
   switch (details.modelId) {
     case "110100100": {
-      // TODO: Convert binary to ASCII in data
+      // Convert binary to ASCII in data
       const ret = await authenticateBinary2Ascii(ns, hostname, details.data);
       //if (!ret) authFail(hostname);
       return ret;
@@ -91,7 +91,7 @@ Connected: ${details.isConnectedToCurrentServer}`
       return ret;
     }
     case "BellaCuore": {
-      // Convert roman numerals or TODO: password in given range of roman numerals
+      // Convert roman numerals or password in given range of roman numerals
       const ret = await authenticateWithRomanNumerals(ns, hostname, details);
       if (!ret) authFail(hostname);
       return ret;
@@ -152,7 +152,7 @@ Connected: ${details.isConnectedToCurrentServer}`
     }
     case "MathML": {
       // TODO: The password is the evaluation of the expression in data
-      // Example: 67 * 78 + ( 97 + 77 ) / 13 / ( 62 + 59 ) + 64
+      // Example 1: 67 * 78 + ( 97 + 77 ) / 13 / ( 62 + 59 ) + 64
       // Example 2: 90 ➕ 48 ҳ ( 96 ҳ 47 ) ҳ 74 ҳ 66
       const ret = false;
       //if (!ret) authFail(hostname);
@@ -186,7 +186,7 @@ Connected: ${details.isConnectedToCurrentServer}`
       return ret;
     }
     case "PHP 5.4": {
-      // TODO: Sorted password is in data
+      // Sorted password is in data
       const ret = await authenticateUnsortFromData(ns, hostname, details);
       if (!ret) authFail(hostname);
       return ret;
@@ -337,66 +337,51 @@ const authenticateParseFromData = async (ns, hostname, data) => {
  *   the details of the server.
  */
 const authenticateUnsortFromData = async (ns, hostname, details) => {
-  // number of passwords = factorial(numbers.length)
   const data = details.data;
   let passwords = [];
   switch (details.passwordLength) {
     case 1:
-      passwords = [
-        data,
-      ];
+      passwords = [data];
+      break;
     case 2:
       passwords = [
         data[0] + data[1],
         data[1] + data[0],
       ];
       break;
-    case 3:
-      passwords = [
-        data[0] + data[1] + data[2],
-        data[0] + data[2] + data[1],
-        data[1] + data[2] + data[0],
-        data[1] + data[0] + data[2],
-        data[2] + data[0] + data[1],
-        data[2] + data[1] + data[0],
-      ];
-      break;
-    case 4:
-      passwords = [
-        data[0] + data[1] + data[2] + data[3],
-        data[0] + data[1] + data[3] + data[2],
-        data[0] + data[2] + data[3] + data[1],
-        data[0] + data[2] + data[1] + data[3],
-        data[0] + data[3] + data[1] + data[2],
-        data[0] + data[3] + data[2] + data[1],
-        data[1] + data[3] + data[2] + data[0],
-        data[1] + data[3] + data[0] + data[2],
-        data[1] + data[2] + data[0] + data[3],
-        data[1] + data[2] + data[3] + data[0],
-        data[1] + data[0] + data[3] + data[2],
-        data[1] + data[0] + data[2] + data[3],
-        data[2] + data[0] + data[1] + data[3],
-        data[2] + data[0] + data[3] + data[1],
-        data[2] + data[1] + data[3] + data[0],
-        data[2] + data[1] + data[0] + data[3],
-        data[2] + data[3] + data[0] + data[1],
-        data[2] + data[3] + data[1] + data[0],
-        data[3] + data[0] + data[2] + data[1],
-        data[3] + data[0] + data[1] + data[2],
-        data[3] + data[2] + data[1] + data[0],
-        data[3] + data[2] + data[0] + data[1],
-        data[3] + data[1] + data[0] + data[2],
-        data[3] + data[1] + data[2] + data[0],
-      ];
-      break;
     default:
-      ns.tprint(`
+      passwords = [
+        ...((array = data.split("")) => {
+          const length = array.length;
+          const permutations = [array.slice()];
+          const c = new Array(length).fill(0);
+          let i = 1, k, p;
 
-No solver for model: ${details.modelId}
-Length: ${details.passwordLength}`
-      );
-      return false;
+          while (i < length) {
+            if (c[i] < i) {
+              k = i % 2 && c[i];
+              p = array[i];
+              array[i] = array[k];
+              array[k] = p;
+              ++c[i];
+              i = 1;
+              permutations.push(array.slice());
+            }
+            else {
+              c[i] = 0;
+              ++i;
+            }
+          }
+
+          // Purge any duplicate permutations and merge inner arrays
+          const map = new Map();
+          permutations.forEach((x) => map.set(JSON.stringify(x), x.join("")));
+
+          return map.values();
+        })()
+      ];
   }
+
   const result = await authenticate(ns, hostname, passwords);
   return result.success;
 };
@@ -408,7 +393,6 @@ Length: ${details.passwordLength}`
  * @param {number} length of the password buffer.
  */
 const authenticatePasswordOverflow = async (ns, hostname, length) => {
-  //await authenticateWithNoPassword(ns, hostname);
   const password = "11".repeat(length);
   const result = await ns.dnet.authenticate(hostname, password);
   return result.success;
@@ -520,7 +504,7 @@ const authenticateParseRangeFromHint = async (ns, hostname, details) => {
 /**
  * Authenticates on 'OpenWebAccessP int' type servers 
  * @param {NS} ns
- * @param {string} hostname the name of the server to attem t to authorize on.
+ * @param {string} hostname the name of the server to attempt to authorize on.
  */
 const authenticateFromHeartbleed = async (ns, hostname) => {
   let message;
@@ -538,7 +522,7 @@ const authenticateFromHeartbleed = async (ns, hostname) => {
 };
 
 /**
- * Authenticates on 'PrimeTi e 2' type servers 
+ * Authenticates on 'PrimeTime 2' type servers 
  * @param {NS} ns
  * @param {string} hostname the name of the server to attem t to authorize on.
  * @param {string} data the details. ata of the server.
@@ -582,10 +566,10 @@ const authenticateWithHighestPrime = async (ns, hostname, data) => {
 };
 
 /**
- * Authenticates on '11010 100' type servers 
+ * Authenticates on '110100100' type servers 
  * @param {NS} ns
- * @param {string} hostname the name of the server to attem t to authorize on.
- * @param {string} data the details. ata of the server.
+ * @param {string} hostname the name of the server to attempt to authorize on.
+ * @param {string} data the details.data of the server.
  */
 const authenticateBinary2Ascii = async (ns, hostname, data) => {
   let password = "";
