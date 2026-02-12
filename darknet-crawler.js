@@ -576,7 +576,7 @@ const authenticateFromHeartbleed = async (ns, hostname) => {
  * @param {ServerAuthDetails} details the details of the server.
  */
 const authenticateWithHighestPrime = async (ns, hostname, details) => {
-  let maxNum = Number('9'.repeat(details.passwordLength));
+  let maxNum = details.data;
   let highPrime = 1;
 
   // Check for factors of 2
