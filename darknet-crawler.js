@@ -121,9 +121,9 @@ Connected: ${details.isConnectedToCurrentServer}`
       return ret;
     }
     case "EuroZone Free": {
-      // TODO: My favorite EU country
-      const ret = false;
-      //if (!ret) authFail(hostname);
+      // My favorite EU country
+      const ret = authenticateWithEUCountries(ns, hostname, details.passwordLength);
+      if (!ret) authFail(hostname);
       return ret;
     }
     case "Factori-Os": {
@@ -151,11 +151,9 @@ Connected: ${details.isConnectedToCurrentServer}`
       return ret;
     }
     case "MathML": {
-      // TODO: The password is the evaluation of the expression in data
-      // Example 1: 67 * 78 + ( 97 + 77 ) / 13 / ( 62 + 59 ) + 64
-      // Example 2: 90 ➕ 48 ҳ ( 96 ҳ 47 ) ҳ 74 ҳ 66
-      const ret = false;
-      //if (!ret) authFail(hostname);
+      // The password is the evaluation of the expression in data
+      const ret = authenticateSolveExpression(ns, hostname, details.data);
+      if (!ret) authFail(hostname);
       return ret;
     }
     case "NIL": {
@@ -166,23 +164,22 @@ Connected: ${details.isConnectedToCurrentServer}`
     }
     case "OctantVoxel": {
       // Base conversion
+      // TODO: fractional bases
       const ret = await authenticateWithBaseConversion(ns, hostname, details.data);
       if (!ret) authFail(hostname);
       return ret;
     }
     case "OpenWebAccessPoint": {
-      // TODO: heart.bleed? for "Authentification Successful: xxxx" message
+      // heart.bleed? for "Authentification Successful: xxxx" message
+      // TODO: other messages?
       const ret = await authenticateFromHeartbleed(ns, hostname);
       if (!ret) authFail(hostname);
       return ret;
     }
     case "OrdoXenos": {
-      // TODO: XOR mask encrypted password with mask in data
-      // Example: _`w.;00010111 00000001 00000100 00010110
-      // test: _=01011111 ,`=01100000 ,w=01110111 ,.=00101110
-      // xored:    48 61 73 28 = Has(
-      const ret = false;
-      //if (!ret) authFail(hostname);
+      // XOR mask encrypted password with mask in data
+      const ret = authenticateWithXorMask(ns, hostname, details);
+      if (!ret) authFail(hostname);
       return ret;
     }
     case "PHP 5.4": {
@@ -199,7 +196,7 @@ Connected: ${details.isConnectedToCurrentServer}`
     }
     case "PrimeTime 2": {
       // The password is the largest prime factor of number in details.data
-      const ret = await authenticateWithHighestPrime(ns, hostname, details.data);
+      const ret = await authenticateWithHighestPrime(ns, hostname, details);
       if (!ret) authFail(hostname);
       return ret;
     }
@@ -263,7 +260,6 @@ const authenticate = async (ns, hostname, passwords) => {
 
 /**
  * Authenticates on 'ZeroLogon' type servers,
- *   which always have an empty password.
  * @param {NS} ns
  * @param {string} hostname the name of the server to attempt to authorize on.
  */
@@ -275,11 +271,9 @@ const authenticateWithNoPassword = async (ns, hostname) => {
 
 /**
  * Authenticates on 'FreshInstall_1.0' type servers,
- *   which always have a default password.
  * @param {NS} ns
  * @param {string} hostname the name of the server to attempt to authorize on.
- * @param {ServerAuthDetails & {isOnline: boolean} details
- *   the details of the server.
+ * @param {ServerAuthDetails} details the details of the server.
  */
 const authenticateWithDefaultPassword = async (ns, hostname, details) => {
   let passwords;
@@ -299,15 +293,49 @@ const authenticateWithDefaultPassword = async (ns, hostname, details) => {
 };
 
 /**
+ * Authenticates on 'MathML' type servers,
+ * @param {NS} ns
+ * @param {string} hostname the name of the server to attempt to authorize on.
+ * @param {string} data the expression to evaluate.
+ */
+const authenticateSolveExpression = async (ns, hostname, data) => {
+  const password = data
+    .replaceAll("➕", '+')
+    .replaceAll("➖", '-')
+    .replaceAll("ҳ", '*')
+    .replaceAll("÷", '/')
+    .replaceAll("ns.exit(),", "");
+
+  const result = await ns.dnet.authenticate(hostname, eval(password));
+  return result.success;
+};
+
+/**
  * Authenticates on 'Laika4' type servers,
- *   which always have a dog's name password.
  * @param {NS} ns
  * @param {string} hostname the name of the server to attempt to authorize on.
  * @param {number} passwordLength the length of the password.
  */
 const authenticateWithDogNames = async (ns, hostname, passwordLength) => {
+  // ["Austria", "Belgium", "Bulgaria", "Croatia", "Republic of Cyprus", "Czech Republic", "Denmark", "Estonia", "Finland", "France", "Germany", "Greece", "Hungary", "Ireland", "Italy", "Latvia", "Lithuania", "Luxembourg", "Malta", "Netherlands", "Poland", "Portugal", "Romania", "Slovakia", "Slovenia", "Spain", "Sweden"];
   const passwords = ["max", "fido", "spot", "rover"]
     .filter((p) => p.length === passwordLength);
+  const result = await authenticate(ns, hostname, passwords);
+  return result.success;
+};
+
+/**
+ * Authenticates on 'EuroZone Free' type servers,
+ * @param {NS} ns
+ * @param {string} hostname the name of the server to attempt to authorize on.
+ * @param {number} passwordLength the length of the password.
+ */
+const authenticateWithEUCountries = async (ns, hostname, passwordLength) => {
+  const passwords = [
+    "Italy", "Malta", "Spain", "France", "Greece", "Latvia", "Poland", "Sweden", "Austria", "Belgium", "Croatia",
+    "Denmark", "Estonia", "Finland", "Germany", "Hungary", "Ireland", "Romania", "Bulgaria", "Portugal", "Slovakia",
+    "Slovenia", "Lithuania", "Luxembourg", "Netherlands", "Czech Republic", "Republic of Cyprus",
+  ].filter((p) => p.length === passwordLength);
   const result = await authenticate(ns, hostname, passwords);
   return result.success;
 };
@@ -350,6 +378,7 @@ const authenticateUnsortFromData = async (ns, hostname, details) => {
       ];
       break;
     default:
+      // Generate array of all unique permutations
       passwords = [
         ...((array = data.split("")) => {
           const length = array.length;
@@ -375,7 +404,7 @@ const authenticateUnsortFromData = async (ns, hostname, details) => {
 
           // Purge any duplicate permutations and merge inner arrays
           const map = new Map();
-          permutations.forEach((x) => map.set(JSON.stringify(x), x.join("")));
+          permutations.forEach((p) => map.set(JSON.stringify(p), p.join("")));
 
           return map.values();
         })()
@@ -394,6 +423,25 @@ const authenticateUnsortFromData = async (ns, hostname, details) => {
  */
 const authenticatePasswordOverflow = async (ns, hostname, length) => {
   const password = "11".repeat(length);
+  const result = await ns.dnet.authenticate(hostname, password);
+  return result.success;
+};
+
+/**
+ * Authenticates on 'OrdoXenos' type servers.
+ * @param {NS} ns
+ * @param {string} hostname the name of the server to attempt to authorize on.
+ * @param {ServerAuthDetails} details the details of the server.
+ */
+const authenticateWithXorMask = async (ns, hostname, details) => {
+  const [chars, masks] = details.data.split(";");
+  const mask = masks.split(" ");
+
+  let password = "";
+  for (let i = 0; i < details.passwordLength; ++i) {
+    password += String.fromCharCode(chars.charCodeAt(i) ^ parseInt(mask[i], 2));
+  }
+
   const result = await ns.dnet.authenticate(hostname, password);
   return result.success;
 };
@@ -475,7 +523,7 @@ const authenticateWithBaseConversion = async (ns, hostname, data) => {
  * Authenticates on 'AccountsManager 4.2' type servers 
  * @param {NS} ns
  * @param {string} hostname the name of the server to attem t to authorize on.
- * @param {ServerAuthDetails} details the det ils of the server.
+ * @param {ServerAuthDetails} details the details of the server.
  */
 const authenticateParseRangeFromHint = async (ns, hostname, details) => {
   let [lowest, highest] = details.passwordHint.match(/\d+/g);
@@ -502,7 +550,7 @@ const authenticateParseRangeFromHint = async (ns, hostname, details) => {
 };
 
 /**
- * Authenticates on 'OpenWebAccessP int' type servers 
+ * Authenticates on 'OpenWebAccessPoint' type servers 
  * @param {NS} ns
  * @param {string} hostname the name of the server to attempt to authorize on.
  */
@@ -524,44 +572,39 @@ const authenticateFromHeartbleed = async (ns, hostname) => {
 /**
  * Authenticates on 'PrimeTime 2' type servers 
  * @param {NS} ns
- * @param {string} hostname the name of the server to attem t to authorize on.
- * @param {string} data the details. ata of the server.
+ * @param {string} hostname the name of the server to attempt to authorize on.
+ * @param {ServerAuthDetails} details the details of the server.
  */
-const authenticateWithHighestPrime = async (ns, hostname, data) => {
-  let num = Number(data);
-  let maxPrime;
+const authenticateWithHighestPrime = async (ns, hostname, details) => {
+  let maxNum = Number('9'.repeat(details.passwordLength));
+  let highPrime = 1;
 
   // Check for factors of 2
-  while (num % 2 === 0) {
-    maxPrime = 2;
-    num >>= 1;
+  while (maxNum % 2 === 0) {
+    highPrime = 2;
+    maxNum >>= 1;
   }
 
   // Check for factors of 3
-  while (num % 3 === 0) {
-    maxPrime = 3;
-    num /= 3;
+  while (maxNum % 3 === 0) {
+    highPrime = 3;
+    maxNum /= 3;
   }
 
-  // Check for odd factors starting from 5 and 
-  // incrementing by 6 (i and i+2)
-  for (let i = 5; i * i <= num; i += 6) {
-    while (num % i === 0) {
-      maxPrime = i;
-      num /= i;
+  // Check for odd factors starting from 5 and incrementing by 6 (i and i+2)
+  for (let i = 5; i * i <= maxNum; i += 6) {
+    while (maxNum % i === 0) {
+      highPrime = i;
+      maxNum /= i;
     }
-    while (num % (i + 2) === 0) {
-      maxPrime = i + 2;
-      num /= (i + 2);
+    while (maxNum % (i + 2) === 0) {
+      highPrime = i + 2;
+      maxNum /= (i + 2);
     }
   }
 
-  // If num is still greater than 4, it is a 
-  // prime number
-  if (num > 4)
-    maxPrime = num;
-
-  const result = await ns.dnet.authenticate(hostname, maxPrime);
+  const password = highPrime.padStart(details.passwordLength, '0');
+  const result = await ns.dnet.authenticate(hostname, password);
   return result.success;
 };
 
