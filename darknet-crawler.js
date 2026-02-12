@@ -576,34 +576,38 @@ const authenticateFromHeartbleed = async (ns, hostname) => {
  * @param {ServerAuthDetails} details the details of the server.
  */
 const authenticateWithHighestPrime = async (ns, hostname, details) => {
-  let maxNum = details.data;
-  let highPrime = 1;
+  let num = details.data;
+  let highPrime;
 
   // Check for factors of 2
-  while (maxNum % 2 === 0) {
+  while (num % 2 === 0) {
     highPrime = 2;
-    maxNum >>= 1;
+    num /= 2;
   }
 
   // Check for factors of 3
-  while (maxNum % 3 === 0) {
+  while (num % 3 === 0) {
     highPrime = 3;
-    maxNum /= 3;
+    num /= 3;
   }
 
   // Check for odd factors starting from 5 and incrementing by 6 (i and i+2)
-  for (let i = 5; i * i <= maxNum; i += 6) {
-    while (maxNum % i === 0) {
+  for (let i = 5; i * i <= num; i += 6) {
+    while (num % i === 0) {
       highPrime = i;
-      maxNum /= i;
+      num /= i;
     }
-    while (maxNum % (i + 2) === 0) {
+    while (num % (i + 2) === 0) {
       highPrime = i + 2;
-      maxNum /= (i + 2);
+      num /= (i + 2);
     }
   }
 
-  const password = highPrime.padStart(details.passwordLength, '0');
+  // If num is still greater than 4, it is a prime number
+  if (num > 4)
+    highPrime = num;
+
+  const password = `${highPrime}`.padStart(details.passwordLength, '0');
   const result = await ns.dnet.authenticate(hostname, password);
   return result.success;
 };
