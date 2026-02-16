@@ -1,33 +1,32 @@
 /** @param {NS} ns */
 export async function main(ns) {
-  // Open any caches on this server
-  ns.ls(ns.self().server, ".cache")
-    .forEach((cache) => ns.dnet.openCache(cache));
-
   while (true) {
+    // Open any caches on this server
+    ns.ls(ns.self().server, ".cache").forEach((cache) => ns.dnet.openCache(cache));
+
     // Get a list of all darknet hostnames directly connected to the current server
     const nearbyServers = ns.dnet.probe();
 
     // Attempt to authenticate with each of the nearby servers, and spread this script to them
     for (const hostname of nearbyServers) {
       const details = ns.dnet.getServerAuthDetails(hostname);
-      await ns.asleep(5000);
       const authenticationSuccessful = await serverSolver(ns, hostname, details);
       if (!authenticationSuccessful) {
         continue; // If we failed to auth, just move on to the next server
       }
-      if (ns.dnet.getServerAuthDetails(hostname).hasSession) {
-        // If we have successfully authenticated, we can now copy and run this script on the target server
+      // free up blocked ram on this server using ns.dnet.memoryReallocation
+      if (ns.dnet.getServerAuthDetails(hostname).hasSession && ns.dnet.getBlockedRam(hostname) > 0) {
+        const result = await ns.dnet.memoryReallocation(hostname);
+      }
+
+      // If we have successfully authenticated, we can now copy and run this script on the target server
+      if (ns.dnet.getServerAuthDetails(hostname).hasSession && ns.getServerMaxRam(hostname) >= ns.self().ramUsage) {
         ns.scp(ns.getScriptName(), hostname);
         ns.exec(ns.getScriptName(), hostname, {
           preventDuplicates: true, // This prevents running multiple copies of this script
         });
       }
     }
-
-    // TODO: free up blocked ram on this server using ns.dnet.memoryReallocation
-
-    // TODO: look for .cache files on this server and open them with ns.dnet.openCache
 
     // TODO: take advantage of the extra ram on darknet servers to run ns.dnet.phishingAttack calls for money
 
@@ -164,7 +163,6 @@ Connected: ${details.isConnectedToCurrentServer}`
     }
     case "OctantVoxel": {
       // Base conversion
-      // TODO: fractional bases
       const ret = await authenticateWithBaseConversion(ns, hostname, details.data);
       if (!ret) authFail(hostname);
       return ret;
@@ -299,14 +297,18 @@ const authenticateWithDefaultPassword = async (ns, hostname, details) => {
  * @param {string} data the expression to evaluate.
  */
 const authenticateSolveExpression = async (ns, hostname, data) => {
-  const password = data
+  if (data.includes("global")) {
+    data.replace(` , !globalThis.pwn3d && (globalThis.pwn3d=true, alert("You've been hacked! You evaluated a string and let me inject code, didn't you? HAHAHAHA!") , globalThis.openDevMenu() ) , ns.exit()`, "")
+  }
+  const password = eval(data
     .replaceAll("➕", '+')
     .replaceAll("➖", '-')
     .replaceAll("ҳ", '*')
     .replaceAll("÷", '/')
-    .replaceAll("ns.exit(),", "");
+    .replaceAll("ns.exit(),", "")
+  );
 
-  const result = await ns.dnet.authenticate(hostname, eval(password));
+  const result = await ns.dnet.authenticate(hostname, password);
   return result.success;
 };
 
@@ -317,7 +319,6 @@ const authenticateSolveExpression = async (ns, hostname, data) => {
  * @param {number} passwordLength the length of the password.
  */
 const authenticateWithDogNames = async (ns, hostname, passwordLength) => {
-  // ["Austria", "Belgium", "Bulgaria", "Croatia", "Republic of Cyprus", "Czech Republic", "Denmark", "Estonia", "Finland", "France", "Germany", "Greece", "Hungary", "Ireland", "Italy", "Latvia", "Lithuania", "Luxembourg", "Malta", "Netherlands", "Poland", "Portugal", "Romania", "Slovakia", "Slovenia", "Spain", "Sweden"];
   const passwords = ["max", "fido", "spot", "rover"]
     .filter((p) => p.length === passwordLength);
   const result = await authenticate(ns, hostname, passwords);
@@ -506,20 +507,6 @@ const convertRoman = (value) => {
 };
 
 /**
- * Authenticates on 'OctantVoxel' type servers 
- * @param {NS} ns
- * @param {string} hostname the name of the server to attem t to authorize on.
- * @param {string} data the details.data of the server.
- */
-const authenticateWithBaseConversion = async (ns, hostname, data) => {
-  const [base, value] = data.split(',');
-  const password = baseConvert(base, value);
-
-  const result = await ns.dnet.authenticate(hostname, password);
-  return result.success;
-};
-
-/**
  * Authenticates on 'AccountsManager 4.2' type servers 
  * @param {NS} ns
  * @param {string} hostname the name of the server to attem t to authorize on.
@@ -613,6 +600,18 @@ const authenticateWithHighestPrime = async (ns, hostname, details) => {
 };
 
 /**
+ * Authenticates on 'OctantVoxel' type servers 
+ * @param {NS} ns
+ * @param {string} hostname the name of the server to attem t to authorize on.
+ * @param {string} data the details.data of the server.
+ */
+const authenticateWithBaseConversion = async (ns, hostname, data) => {
+  const password = baseConvert(...data.split(','));
+  const result = await ns.dnet.authenticate(hostname, password);
+  return result.success;
+};
+
+/**
  * Authenticates on '110100100' type servers 
  * @param {NS} ns
  * @param {string} hostname the name of the server to attempt to authorize on.
@@ -627,16 +626,24 @@ const authenticateBinary2Ascii = async (ns, hostname, data) => {
 };
 
 const baseConvert = (base, value) => {
-  // TODO: convert fractional bases
-  // Hint: the password is the base 3.8 number 102320.323011 in base 10
-  // Data: 3.8,102320.323011
-  let password = 0;
-  for (let i = 0, j = value.length - 1; i < value.length; ++i, --j) {
-    const char = value.charCodeAt(j);
-    const digit = char > 64 ? char - 55 : Number(value[j]);
-    password += digit * Math.pow(base, i);
+  let frac = null;
+  let num = 0;
+  for (let i = 0; i < value.length; ++i) {
+    const char = value.charAt(i);
+    const digit = char === '.' ? char : parseInt(char, 36);
+    if (frac !== null) {
+      num += frac * digit;
+      frac /= base;
+    }
+    else if (digit === '.') {
+      frac = 1 / base;
+    }
+    else {
+      num *= base;
+      num += digit;
+    }
   }
-  return password;
+  return Math.ceil(num);
 };
 
 const getPrimesList = (limit) => {
