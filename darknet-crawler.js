@@ -86,7 +86,7 @@ Connected: ${details.isConnectedToCurrentServer}`
     case "AccountsManager_4.2": {
       // Password range in hint
       const ret = await authenticateParseRangeFromHint(ns, hostname, details);
-      if (!ret) authFail(details);
+      if (!ret) authFail(hostname);
       return ret;
     }
     case "BellaCuore": {
@@ -275,14 +275,15 @@ const authenticateWithNoPassword = async (ns, hostname) => {
  */
 const authenticateWithDefaultPassword = async (ns, hostname, details) => {
   let passwords;
-  if (details.passwordFormat === "numeric") {
-    passwords = ["0000", "12345"];
-  }
-  else if (details.passwordFormat === "alphabetic") {
-    passwords = ["admin", "password"];
-  }
-  else {
-    return { success: false };
+  switch (details.passwordFormat) {
+    case "alphabetic":
+      passwords = ["admin", "password"];
+      break;
+    case "numeric":
+      passwords = ["0000", "12345"];
+      break;
+    default:
+      return { success: false };
   }
   const result = await ns.dnet.authenticate(hostname, passwords
     .filter((p) => p.length === details.passwordLength)[0]
@@ -297,10 +298,9 @@ const authenticateWithDefaultPassword = async (ns, hostname, details) => {
  * @param {string} data the expression to evaluate.
  */
 const authenticateSolveExpression = async (ns, hostname, data) => {
-  if (data.includes("global")) {
-    data.replace(` , !globalThis.pwn3d && (globalThis.pwn3d=true, alert("You've been hacked! You evaluated a string and let me inject code, didn't you? HAHAHAHA!") , globalThis.openDevMenu() ) , ns.exit()`, "")
-  }
-  const password = eval(data
+  const exp = data.includes(", !glob") ? data.substring(0, data.indexOf(", !glob")) : data;
+
+  const password = eval(exp
     .replaceAll("➕", '+')
     .replaceAll("➖", '-')
     .replaceAll("ҳ", '*')
@@ -455,19 +455,15 @@ const authenticateWithXorMask = async (ns, hostname, details) => {
  */
 const authenticateWithRomanNumerals = async (ns, hostname, details) => {
   const values = details.data.split(',');
+
+  let result;
   if (values.length === 1) {
-    // Hint: The password is the value of the number 'CCCXLIII'
-    // Data: CCCXLIII
     const password = convertRoman(values[0]);
-    const result = await ns.dnet.authenticate(hostname, password);
-    return result.success;
+    result = await ns.dnet.authenticate(hostname, password);
   }
   else {
-    // Hint: The password is between 'CCC' and 'CDXXXII'
-    // Data: CCC,CDXXXII
-    // Hint: The password is between 'nulla' and 'DCCXIX'
-    // Data: nulla,DCCXIX
-    let [lowest, highest] = [convertRoman(values[0]), convertRoman(values[1])];
+    let [min, max] = [convertRoman(values[0]), convertRoman(values[1])];
+    /*let [lowest, highest] = [convertRoman(values[0]), convertRoman(values[1])];
     let guess = Math.round((highest - lowest) / 2);
     let result;
     while (true) {
@@ -488,7 +484,11 @@ const authenticateWithRomanNumerals = async (ns, hostname, details) => {
       }
     }
     return result.success;
+    */
+    result = await authenticateFromRange(ns, hostname, min, max, details.passwordLength, "ALTUS");
   }
+
+  return result.success;
 };
 
 const convertRoman = (value) => {
@@ -513,7 +513,8 @@ const convertRoman = (value) => {
  * @param {ServerAuthDetails} details the details of the server.
  */
 const authenticateParseRangeFromHint = async (ns, hostname, details) => {
-  let [lowest, highest] = details.passwordHint.match(/\d+/g);
+  let [min, max] = details.passwordHint.match(/\d+/g);
+  /*let [lowest, highest] = details.passwordHint.match(/\d+/g);
   let guess = Math.round((highest - lowest) / 2);
   let result;
   while (true) {
@@ -525,6 +526,33 @@ const authenticateParseRangeFromHint = async (ns, hostname, details) => {
       log = (await ns.dnet.heartbleed(hostname)).logs[0];
     }
     if (log.includes("Lower")) {
+      highest = guess;
+      guess -= Math.round((highest - lowest) / 2);
+    }
+    else { // Higher
+      lowest = guess;
+      guess += Math.round((highest - lowest) / 2);
+    }
+  }
+  return result.success;
+  */
+  const result = await authenticateFromRange(ns, hostname, min, max, details.passwordLength, "Lower");
+  return result.success;
+};
+
+const authenticateFromRange = async (ns, hostname, min, max, len, higherMsg) => {
+  let [lowest, highest] = [min, max];
+  let guess = Math.round((max - min) / 2);
+  let result;
+  while (true) {
+    const password = `${guess}`.padStart(len, '0');
+    result = await ns.dnet.authenticate(hostname, password);
+    if (result.success) break;
+    let log;
+    while (!log) {
+      log = (await ns.dnet.heartbleed(hostname)).logs[0];
+    }
+    if (log.includes(higherMsg)) {
       highest = guess;
       guess -= Math.round((highest - lowest) / 2);
     }
