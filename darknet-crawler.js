@@ -205,9 +205,9 @@ Connected: ${details.isConnectedToCurrentServer}`
       return ret;
     }
     case "TopPass": {
-      // TODO: It's a common password
-      const ret = false;
-      //if (!ret) authFail(hostname);
+      // TIt's a common password
+      const ret = authenticateWithCommonPassword(ns, hostname, details);
+      if (!ret) authFail(hostname);
       return ret;
     }
     case "ZeroLogon": {
@@ -223,11 +223,9 @@ Connected: ${details.isConnectedToCurrentServer}`
       return ret;
     }*/
     case "(The Labyrinth)": {
-      // TODO: X marks the spot; there are 7 labs
-      // "!!the:masterwork:of:daedalus<5999>!!"
-      // "!!the:masterwork:of:daedalus<6293>!!"
-      const nums = 6293;
-      const ret = await ns.dnet.authenticate(hostname, `!!the:masterwork:of:daedalus<${nums}>!!`);
+      // TODO: X marks the spot; build maze solver; there are 7 labs
+      const guess = Math.floor(Math.random() * 10000);
+      const ret = await ns.dnet.authenticate(hostname, `!!the:masterwork:of:daedalus<${guess}>!!`);
       if (!ret) authFail(hostname);
       return ret;
     }
@@ -292,6 +290,58 @@ const authenticateWithDefaultPassword = async (ns, hostname, details) => {
 };
 
 /**
+ * Authenticates on 'Laika4' type servers,
+ * @param {NS} ns
+ * @param {string} hostname the name of the server to attempt to authorize on.
+ * @param {number} passwordLength the length of the password.
+ */
+const authenticateWithDogNames = async (ns, hostname, passwordLength) => {
+  const passwords = ["max", "fido", "spot", "rover"]
+    .filter((p) => p.length === passwordLength);
+  const result = await authenticate(ns, hostname, passwords);
+  return result.success;
+};
+
+/**
+ * Authenticates on 'TopPass' type servers,
+ * @param {NS} ns
+ * @param {string} hostname the name of the server to attempt to authorize on.
+ * @param {ServerAuthDetails} details the details of the server.
+ */
+const authenticateWithCommonPassword = async (ns, hostname, details) => {
+  let passwords;
+  switch (details.passwordFormat) {
+    case "alphabetic":
+      passwords = [
+        "love", "pass", "aaaaaa", "access", "amanda", "andrew", "asdfgh", "ashley", "austin", "batman", "biteme",
+        "buster", "cheese", "dallas", "daniel", "dragon", "george", "ginger", "harley", "hockey", "hunter", "jordan",
+        "joshua", "maggie", "master", "matrix", "monkey", "nicole", "pepper", "qazwsx", "qwerty", "ranger", "robert",
+        "shadow", "soccer", "summer", "taylor", "thomas", "tigger", "zxcvbn", "baseball", "charlie", "chelsea",
+        "computer", "football", "freedom", "iloveyou", "jennifer", "jessica", "letmein", "matthew", "michael",
+        "michelle", "mustang", "password", "princess", "starwars", "sunshine", "superman", "thunder", "yankees",
+        "zxcvbnm", "qwertyuiop"
+      ];
+      break;
+    case "alphanumeric":
+      passwords = ["123qwe", "abc123", "1qaz2wsx", "trustno1"];
+      break;
+    case "numeric":
+      passwords = [
+        "0", "1111", "1234", "2000", "6969", "12345", "111111", "112233", "121212", "123123", "123321", "123456",
+        "131313", "159753", "555555", "654321", "666666", "696969", "777777", "1234567", "7777777", "11111111",
+        "12345678", "123456789", "987654321", "1234567890"
+      ];
+      break;
+    default:
+      return { success: false };
+  }
+  const result = await authenticate(ns, hostname, passwords
+    .filter((p) => p.length === details.passwordLength)
+  );
+  return result.success;
+};
+
+/**
  * Authenticates on 'MathML' type servers,
  * @param {NS} ns
  * @param {string} hostname the name of the server to attempt to authorize on.
@@ -309,19 +359,6 @@ const authenticateSolveExpression = async (ns, hostname, data) => {
   );
 
   const result = await ns.dnet.authenticate(hostname, password);
-  return result.success;
-};
-
-/**
- * Authenticates on 'Laika4' type servers,
- * @param {NS} ns
- * @param {string} hostname the name of the server to attempt to authorize on.
- * @param {number} passwordLength the length of the password.
- */
-const authenticateWithDogNames = async (ns, hostname, passwordLength) => {
-  const passwords = ["max", "fido", "spot", "rover"]
-    .filter((p) => p.length === passwordLength);
-  const result = await authenticate(ns, hostname, passwords);
   return result.success;
 };
 
