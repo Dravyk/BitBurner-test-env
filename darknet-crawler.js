@@ -127,7 +127,7 @@ Authenticated: ${details.hasSession}`
       return ret;
     }
     case "Factori-Os": {
-      // TODO: Is divisible by ?
+      // Is divisible by ?
       const ret = authenticateWithPrimes(ns, hostname);
       if (!ret) authFail(hostname);
       return ret;
@@ -225,10 +225,13 @@ Authenticated: ${details.hasSession}`
     }*/
     case "(The Labyrinth)": {
       // TODO: X marks the spot; build maze solver; there are 7 labs
-      const guess = Math.floor(Math.random() * 10000);
+      for (let guess = 0; guess < 10000; ++guess) {
+        if (await ns.dnet.authenticate(hostname, `!!the:masterwork:of:daedalus<${guess}>!!`)) return true;
+      }
+      /*const guess = Math.floor(Math.random() * 10000);
       const ret = await ns.dnet.authenticate(hostname, `!!the:masterwork:of:daedalus<${guess}>!!`);
       if (!ret) authFail(hostname);
-      return ret;
+      return ret;*/
     }
     default:
       ns.tprint(`
