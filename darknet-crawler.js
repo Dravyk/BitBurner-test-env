@@ -14,7 +14,8 @@ export async function main(ns) {
       if (!authenticationSuccessful) {
         continue; // If we failed to auth, just move on to the next server
       }
-      // free up blocked ram on this server using ns.dnet.memoryReallocation
+
+      // Free up blocked ram on this server using ns.dnet.memoryReallocation
       if (ns.dnet.getServerAuthDetails(hostname).hasSession && ns.dnet.getBlockedRam(hostname) > 0) {
         const result = await ns.dnet.memoryReallocation(hostname);
       }
@@ -36,10 +37,9 @@ export async function main(ns) {
 
 /**
  * Attempts to authenticate with the specified server using the Darknet API.
- * @param {NS} ns  * @param {string} hostname
- *   the name of the server to attempt to authorize on
- * @param {ServerAuthDetails & {isOnline: boolean} details
- *   the details of the server. 
+ * @param {NS} ns
+ * @param {string} hostname The name of the server to attempt to authorize on
+ * @param {ServerAuthDetails & {isOnline: boolean} details The details of the server. 
  */
 export const serverSolver = async (ns, hostname, details) => {
   // Get key info about the server, so we know what kind it is and how to authenticate with it
@@ -64,7 +64,8 @@ Length: ${details.passwordLength}
 Hint: ${details.passwordHint}
 Data: ${details.data}
 Online: ${details.isOnline}
-Connected: ${details.isConnectedToCurrentServer}`
+Connected: ${details.isConnectedToCurrentServer}
+Authenticated: ${details.hasSession}`
       );
     }
   }
@@ -127,8 +128,8 @@ Connected: ${details.isConnectedToCurrentServer}`
     }
     case "Factori-Os": {
       // TODO: Is divisible by ?
-      const ret = false;
-      //if (!ret) authFail(hostname);
+      const ret = authenticateWithPrimes(ns, hostname);
+      if (!ret) authFail(hostname);
       return ret;
     }
     case "FreshInstall_1.0": {
@@ -205,7 +206,7 @@ Connected: ${details.isConnectedToCurrentServer}`
       return ret;
     }
     case "TopPass": {
-      // TIt's a common password
+      // It's a common password
       const ret = authenticateWithCommonPassword(ns, hostname, details);
       if (!ret) authFail(hostname);
       return ret;
@@ -617,6 +618,43 @@ const authenticateWithHighestPrime = async (ns, hostname, details) => {
   const password = `${highPrime}`.padStart(details.passwordLength, '0');
   const result = await ns.dnet.authenticate(hostname, password);
   return result.success;
+};
+
+/**
+ * Authenticates on 'Factori-Os' type servers,
+ * @param {NS} ns
+ * @param {string} hostname the name of the server to attempt to authorize on.
+ */
+const authenticateWithPrimes = async (ns, hostname) => {
+  const primesList = [
+    2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 1069, 1409, 1471,
+    1567, 1597, 1601, 1697, 1747, 1801, 1889, 1979, 1999, 2063, 2207, 2371, 2503, 2539, 2693, 2741, 2753, 2801, 2819,
+    2837, 2909, 2939, 3169, 3389, 3571, 3761, 3881, 4217, 4289, 4547, 4729, 4789, 4877, 4943, 4951, 4957, 5393, 5417,
+    5419, 5441, 5519, 5527, 5647, 5779, 5881, 6007, 6089, 6133, 6389, 6451, 6469, 6547, 6661, 6719, 6841, 7103, 7549,
+    7559, 7573, 7691, 7753, 7867, 8053, 8081, 8221, 8329, 8599, 8677, 8761, 8839, 8963, 9103, 9199, 9343, 9467, 9551,
+    9601, 9739, 9749, 9859
+  ];
+
+  let acc = 1;
+  for (const prime of primesList) {
+
+    let isFactor = true;
+    while (isFactor) {
+      const guess = acc * prime;
+      const result = await ns.dnet.authenticate(hostname, guess);
+      if (result.success === true) return result.success;
+
+      let log;
+      while (!log) {
+        log = (await ns.dnet.heartbleed(hostname)).logs[0];
+      }
+
+      isFactor = log.includes("IS") && log.includes(`"${guess}"`);
+      if (isFactor) guess = acc;
+    }
+  }
+
+  return false;
 };
 
 /**
