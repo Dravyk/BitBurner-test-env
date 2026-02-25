@@ -640,7 +640,6 @@ const authenticateWithPrimes = async (ns, hostname) => {
 
   let acc = 1;
   for (const prime of primesList) {
-
     let isFactor = true;
     while (isFactor) {
       const guess = acc * prime;
@@ -653,7 +652,7 @@ const authenticateWithPrimes = async (ns, hostname) => {
       }
 
       isFactor = log.includes("IS") && log.includes(`"${guess}"`);
-      if (isFactor) guess = acc;
+      if (isFactor) acc = guess;
     }
   }
 
