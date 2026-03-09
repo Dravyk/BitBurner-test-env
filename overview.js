@@ -21,7 +21,7 @@ export async function main(ns) {
     bnHook0.style = styleColor;
     bnHook1.style = styleColor;
     bnHook0.innerText = `BitNode ${bnCurrent}.${bnLevel}`;
-    moneyEl.parentElement.insertBefore(bnEl, moneyEl.parentElement.childNodes[0]);
+    moneyEl.parentElement.insertBefore(bnEl, moneyEl.parentElement.firstChild);
   }
 
   // Hook into game's overview
