@@ -1,13 +1,19 @@
 /** @param {NS} ns **/
 export async function main(ns) {
-  const doc = globalThis["document"];
   ns.disableLog("asleep");
 
+  const doc = globalThis["document"];
+
+  /** @type {Player} */
+  const player = getPlayerObject();
+  const home = player.getHomeComputer();
+  ns.clearLog();
+  ns.print(player);
+
   // Grab current bitnode data
-  const resetInfo = ns.getResetInfo();
-  const bnCurrent = resetInfo.currentNode;
-  const bnLevel = (resetInfo.ownedSF.get(bnCurrent) ?? 0) + 1;
-  const bnStart = resetInfo.lastNodeReset;
+  const bnCurrent = player.bitNodeN;
+  const bnLevel = (player.sourceFiles.get(bnCurrent) ?? 0) + 1;
+  const bnStart = player.lastNodeReset;
 
   // Create element and hook for bitnode info
   let bnHook1 = doc.getElementById("overview-bn-hook-1");
@@ -38,36 +44,43 @@ export async function main(ns) {
     bnHook1.parentElement.parentElement.parentElement.removeChild(bnHook1.parentElement.parentElement);
   });
 
+  // Set overview headers
+  try {
+    hook0.innerText = `City:
+Entropy:
+Karma:
+Kills:
+Ram:
+Cores:
+BlackOps:`;
+  }
+  catch (err) {
+    ns.print(`ERROR- ${String(err)}`);
+  }
+
   while (true) {
-    const player = ns.getPlayer();
-    const headers = []
     const values = [];
-
-    headers.push("City:");
+    // City
     values.push(player.city);
-
-    headers.push("Entropy:");
+    // Entropy
     values.push(player.entropy);
-
-    headers.push("Karma:");
+    // Karma
     values.push(ns.format.number(player.karma, 3));
-
-    headers.push("Kills:");
+    // Kills
     values.push(player.numPeopleKilled);
-
-    headers.push("Ram:");
-    values.push(`${ns.format.ram(ns.getServer("home").ramUsed)}/${ns.format.ram(ns.getServer("home").maxRam, 0)}`);
-
-    headers.push("Cores:");
-    values.push(`${ns.getServer("home").cpuCores}`);
+    // Ram
+    values.push(`${ns.format.ram(home.ramUsed)}/${ns.format.ram(home.maxRam, 0)}`);
+    // Cores
+    values.push(`${home.cpuCores}`);
+    // BlackOps
+    values.push(`${player.numBlackOpsComplete ?? 0}/21`);
 
     try {
-      hook0.innerText = headers.join('\n');
       hook1.innerText = values.join('\n');
       bnHook1.innerText = formatTime(Date.now() - bnStart).padStart(12, '\xa0');
     }
     catch (err) {
-      if (hook0 === null) {
+      if (hook1 === null) {
         // The hooks are invalid. Bitburner was most likely closed and restarted.
         ns.print(`ERROR- ${String(err)}`);
       } else {
@@ -78,6 +91,20 @@ export async function main(ns) {
     }
 
     await ns.asleep(1e3);
+  }
+}
+
+function getPlayerObject() {
+  if (!globalThis.webpackChunkbitburner) return;
+  if (!globalThis.webpackRequire) {
+    globalThis.webpackChunkbitburner.push([[-1], {}, (w) => (globalThis.webpackRequire = w)]);
+  }
+  for (const moduleId of Object.keys(globalThis.webpackRequire.m)) {
+    const module = globalThis.webpackRequire(moduleId);
+    if (!module) continue;
+    for (const value of Object.values(module)) {
+      if (value && value.bitNodeN) return value;
+    }
   }
 }
 
@@ -102,14 +129,14 @@ function formatTime(time) {
 
   const seconds = `${secTruncHours % secondPerMinute}`;
 
+  const showDay = days > 0;
+  const showHr = hours !== '0' || showDay;
+  const showMin = minutes !== '0' || showHr;
+
   let res = "";
   let padHr = 1;
   let padMin = 1;
   let padSec = 1;
-
-  let showDay = days > 0;
-  let showHr = hours !== '0' || showDay;
-  let showMin = minutes !== '0' || showHr;
 
   if (showDay) {
     res += `${days}:`;
