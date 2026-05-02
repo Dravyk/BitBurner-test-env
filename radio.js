@@ -45,8 +45,7 @@ export async function main(ns) {
   console.clear();
 
   const doc = globalThis["document"];
-  globalThis.tailWin = Array.prototype.slice.call(doc
-    .getElementsByTagName("h6"))
+  globalThis.tailWin = Array.prototype.slice.call(doc.getElementsByTagName("h6"))
     .filter((el) => el.textContent.trim() === ns.getScriptName())[0];
 
   const createButton = (id, text, onClick) => {
