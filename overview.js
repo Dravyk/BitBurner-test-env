@@ -1,3 +1,5 @@
+import { formatTime } from "lib/functions";
+
 /** @param {NS} ns **/
 export async function main(ns) {
   ns.disableLog("asleep");
@@ -7,8 +9,8 @@ export async function main(ns) {
   /** @type {Player} */
   const player = getPlayerObject();
   const home = player.getHomeComputer();
-  ns.clearLog();
-  ns.print(player);
+  //console.clear();
+  //console.log(player);
 
   // Grab current bitnode data
   const bnCurrent = player.bitNodeN;
@@ -33,7 +35,7 @@ export async function main(ns) {
   // Hook into game's overview
   const hook0 = doc.getElementById("overview-extra-hook-0");
   const hook1 = doc.getElementById("overview-extra-hook-1");
-  const styleColor = "background: rgb(0, 0, 8);color: darkturquoise";
+  const styleColor = "background: rgb(0, 8, 8);color: rgb(0, 200, 200)";
   hook0.style = styleColor;
   hook1.style = styleColor;
 
@@ -50,9 +52,9 @@ export async function main(ns) {
 Entropy:
 Karma:
 Kills:
-Ram:
 Cores:
-BlackOps:`;
+Ram:`;
+    //BlackOps:`;
   }
   catch (err) {
     ns.print(`ERROR- ${String(err)}`);
@@ -68,16 +70,16 @@ BlackOps:`;
     values.push(ns.format.number(player.karma, 3));
     // Kills
     values.push(player.numPeopleKilled);
-    // Ram
-    values.push(`${ns.format.ram(home.ramUsed)}/${ns.format.ram(home.maxRam, 0)}`);
     // Cores
     values.push(`${home.cpuCores}`);
+    // Ram
+    values.push(`${ns.format.ram(home.ramUsed)}/${ns.format.ram(home.maxRam, 0)}`);
     // BlackOps
-    values.push(`${player.numBlackOpsComplete ?? 0}/21`);
+    //values.push(`${player.numBlackOpsComplete ?? 0} / 21`);
 
     try {
       hook1.innerText = values.join('\n');
-      bnHook1.innerText = formatTime(Date.now() - bnStart).padStart(12, '\xa0');
+      bnHook1.innerText = formatTime(Date.now() - bnStart, true).padStart(12, '\xa0');
     }
     catch (err) {
       if (hook1 === null) {
@@ -106,50 +108,4 @@ function getPlayerObject() {
       if (value && value.bitNodeN) return value;
     }
   }
-}
-
-function formatTime(time) {
-  const millisecondsPerSecond = 1000;
-  const secondPerMinute = 60;
-  const minutesPerHours = 60;
-  const secondPerHours = secondPerMinute * minutesPerHours;
-  const hoursPerDays = 24;
-  const secondPerDay = secondPerHours * hoursPerDays;
-
-  // Convert ms to seconds, since we only have second-level precision
-  const totalSeconds = Math.trunc(time / millisecondsPerSecond);
-
-  const days = Math.trunc(totalSeconds / secondPerDay);
-  const secTruncDays = totalSeconds % secondPerDay;
-
-  const hours = `${Math.trunc(secTruncDays / secondPerHours)}`;
-  const secTruncHours = secTruncDays % secondPerHours;
-
-  const minutes = `${Math.trunc(secTruncHours / secondPerMinute)}`;
-
-  const seconds = `${secTruncHours % secondPerMinute}`;
-
-  const showDay = days > 0;
-  const showHr = hours !== '0' || showDay;
-  const showMin = minutes !== '0' || showHr;
-
-  let res = "";
-  let padHr = 1;
-  let padMin = 1;
-  let padSec = 1;
-
-  if (showDay) {
-    res += `${days}:`;
-    ++padHr;
-  }
-  if (showHr) {
-    res += `${hours.padStart(padHr, '0')}:`;
-    ++padMin;
-  }
-  if (showMin) {
-    res += `${minutes.padStart(padMin, '0')}:`;
-    ++padSec;
-  }
-
-  return res += `${seconds.padStart(padSec, '0')}`;
 }
